@@ -120,7 +120,7 @@ export default function SmetaPage() {
 
       {workTypes.length > 0 && (
         <div className="bg-white border rounded-lg overflow-x-auto overflow-y-auto max-h-[80vh] shadow-sm">
-          <table className="w-full text-xs border-collapse min-w-max">
+          <table className="w-full text-xs border-collapse min-w-max table-fixed">
             <thead>
               {/* Row 1: Work type names */}
               <tr className="bg-gray-100 sticky top-0 z-20">
@@ -196,8 +196,8 @@ export default function SmetaPage() {
                     <textarea
                       value={row.name}
                       onChange={(e) => updateRowName(row.id, e.target.value)}
-                      style={{ fieldSizing: 'content', minHeight: '20px' }}
-                      className="w-full px-1 py-0.5 text-xs border border-transparent hover:border-gray-300 focus:border-blue-500 rounded outline-none bg-transparent resize-none whitespace-normal break-words leading-tight"
+                      rows={1}
+                      className="w-full px-1 py-0.5 text-xs border border-transparent hover:border-gray-300 focus:border-blue-500 rounded outline-none bg-transparent resize-none whitespace-normal break-words leading-tight h-5"
                       placeholder="Название"
                     />
                   </td>
