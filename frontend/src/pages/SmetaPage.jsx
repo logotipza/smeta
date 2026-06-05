@@ -363,7 +363,7 @@ export default function SmetaPage() {
             <thead>
               {/* Row 1: Work type names */}
               <tr className="bg-gray-100 sticky top-0 z-20 drop-shadow-[0_2px_4px_rgba(0,0,0,0.15)]">
-                <th className="border border-gray-300 px-2 py-1.5 text-left font-semibold text-gray-700 min-w-[120px] sticky left-0 bg-gray-100 z-30 drop-shadow-[2px_0_4px_rgba(0,0,0,0.15)]">Задача</th>
+                <th className="border border-gray-300 px-2 py-1.5 text-left font-semibold text-gray-700 min-w-[120px] sticky left-0 bg-gray-100 z-30 drop-shadow-[2px_0_4px_rgba(0,0,0,0.15)] border-r-2 border-gray-400">Задача</th>
                 {workTypes.map((wt, idx) => (
                   <th
                     key={wt.id}
@@ -427,7 +427,7 @@ export default function SmetaPage() {
               </tr>
               {/* Row 2: Specialist */}
               <tr className="bg-gray-50 sticky top-[28px] z-20 drop-shadow-[0_2px_4px_rgba(0,0,0,0.15)]">
-                <td className="border border-gray-300 px-2 py-1 text-[10px] text-gray-500 sticky left-0 bg-gray-50 z-30 drop-shadow-[2px_0_4px_rgba(0,0,0,0.15)]">Специалист</td>
+                <td className="border border-gray-300 px-2 py-1 text-[10px] text-gray-500 sticky left-0 bg-gray-50 z-30 drop-shadow-[2px_0_4px_rgba(0,0,0,0.15)] border-r-2 border-gray-400">Специалист</td>
                 {workTypes.map((wt) => (
                   <td key={wt.id} colSpan={3} className="border border-gray-300 px-1 py-1">
                     <select
@@ -446,7 +446,7 @@ export default function SmetaPage() {
               </tr>
               {/* Row 3: Global risk */}
               <tr className="bg-gray-50 sticky top-[48px] z-20 drop-shadow-[0_2px_4px_rgba(0,0,0,0.15)]">
-                <td className="border border-gray-300 px-2 py-1 text-[10px] text-gray-500 sticky left-0 bg-gray-50 z-30 drop-shadow-[2px_0_4px_rgba(0,0,0,0.15)]">Общий риск</td>
+                <td className="border border-gray-300 px-2 py-1 text-[10px] text-gray-500 sticky left-0 bg-gray-50 z-30 drop-shadow-[2px_0_4px_rgba(0,0,0,0.15)] border-r-2 border-gray-400">Общий риск</td>
                 {workTypes.map((wt) => (
                   <td key={wt.id} colSpan={3} className="border border-gray-300 px-1 py-1 text-center">
                     <input
@@ -462,7 +462,7 @@ export default function SmetaPage() {
               </tr>
               {/* Row 4: Sub-headers */}
               <tr className="bg-gray-50 sticky top-[68px] z-20 drop-shadow-[0_2px_4px_rgba(0,0,0,0.15)]">
-                <td className="border border-gray-300 px-2 py-1 text-[10px] text-gray-500 font-medium sticky left-0 bg-gray-50 z-30 drop-shadow-[2px_0_4px_rgba(0,0,0,0.15)]">Название</td>
+                <td className="border border-gray-300 px-2 py-1 text-[10px] text-gray-500 font-medium sticky left-0 bg-gray-50 z-30 drop-shadow-[2px_0_4px_rgba(0,0,0,0.15)] border-r-2 border-gray-400">Название</td>
                 {workTypes.map((wt) => (
                   <>
                     <td key={`${wt.id}_c`} className="border border-gray-300 px-1 py-1 text-[10px] text-gray-500 text-center font-medium w-16">Чист</td>
@@ -499,7 +499,7 @@ export default function SmetaPage() {
                     ${dragOverRowIdx === rowIdx && draggingRowIdx !== rowIdx ? 'bg-blue-50 ring-2 ring-blue-200' : ''}
                   `}
                 >
-                  <td className="border border-gray-300 px-2 py-1 sticky left-0 bg-white z-10 align-top drop-shadow-[2px_0_4px_rgba(0,0,0,0.15)]">
+                  <td className="border border-gray-300 px-2 py-1 sticky left-0 bg-white z-10 align-top drop-shadow-[2px_0_4px_rgba(0,0,0,0.15)] border-r-2 border-gray-400">
                     <div className="flex items-start gap-1">
                       <span
                         draggable
