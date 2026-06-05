@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
+import RatesPage from './RatesPage.jsx';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001';
 
@@ -35,6 +36,7 @@ const defaultRows = [
 ];
 
 function App() {
+  const [page, setPage] = useState('smeta');
   const [workTypes, setWorkTypes] = useState(defaultWorkTypes);
   const [settings, setSettings] = useState(defaultSettings);
   const [rows, setRows] = useState(defaultRows);
@@ -175,9 +177,16 @@ function App() {
   const autoTypes = workTypes.filter((wt) => wt.type === 'auto');
   const totals = calculated.totals || {};
 
+  if (page === 'rates') {
+    return <RatesPage onBack={() => setPage('smeta')} />;
+  }
+
   return (
     <div style={{ maxWidth: 1400, margin: '16px auto', fontFamily: 'system-ui, sans-serif', fontSize: 13 }}>
-      <h1>Smeta — оценка проекта</h1>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <h1>Smeta — оценка проекта</h1>
+        <button onClick={() => setPage('rates')} style={btn}>📋 Справочник специалистов</button>
+      </div>
 
       {/* НАСТРОЙКИ */}
       <div style={{ border: '1px solid #ddd', borderRadius: 8, padding: 16, marginBottom: 16 }}>
