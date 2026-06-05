@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
+import * as XLSX from 'xlsx';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001';
 
@@ -108,6 +109,113 @@ export default function SmetaPage() {
 
   const getSpecialistName = (id) => rates.find((r) => r.id === id)?.role || '—';
 
+  const colAddr = (idx) => {
+    let s = '';
+    let n = idx;
+    do {
+      s = String.fromCharCode(65 + (n % 26)) + s;
+      n = Math.floor(n / 26) - 1;
+    } while (n >= 0);
+    return s;
+  };
+
+  const exportToXlsx = () => {
+    if (workTypes.length === 0) return;
+
+    const wb = XLSX.utils.book_new();
+    const data = [];
+
+    // Row 1: Work type names (merged later)
+    const header1 = ['Задача'];
+    workTypes.forEach((wt) => {
+      header1.push(wt.name, '', '');
+    });
+    data.push(header1);
+
+    // Row 2: Specialist
+    const header2 = ['Специалист'];
+    workTypes.forEach((wt) => {
+      header2.push(getSpecialistName(wt.specialistId), '', '');
+    });
+    data.push(header2);
+
+    // Row 3: Global risk
+    const header3 = ['Общий риск'];
+    workTypes.forEach((wt) => {
+      header3.push(wt.globalRisk, '', '');
+    });
+    data.push(header3);
+
+    // Row 4: Sub-headers
+    const header4 = ['Название'];
+    workTypes.forEach(() => {
+      header4.push('Чист', 'Риск', 'Итого');
+    });
+    data.push(header4);
+
+    // Data rows
+    rows.forEach((row) => {
+      const r = [row.name];
+      workTypes.forEach((wt) => {
+        const est = row.estimates?.[wt.id] || { clean: 0, risk: 1 };
+        r.push(est.clean || 0, est.risk || 1);
+      });
+      data.push(r);
+    });
+
+    const ws = XLSX.utils.aoa_to_sheet(data);
+
+    // Add formulas for totals
+    const firstDataRow = 5; // 1-based Excel row number
+    rows.forEach((_, rowIdx) => {
+      workTypes.forEach((_, wtIdx) => {
+        const colStart = 1 + wtIdx * 3; // 0-based
+        const cleanCol = colAddr(colStart);
+        const riskCol = colAddr(colStart + 1);
+        const totalCol = colAddr(colStart + 2);
+        const globalRiskCol = colAddr(colStart); // globalRisk is in same col, row 3
+        const excelRow = firstDataRow + rowIdx;
+        const cellRef = `${totalCol}${excelRow}`;
+        const formula = `=ROUNDUP(${cleanCol}${excelRow}*${riskCol}${excelRow}*${globalRiskCol}$3,0)`;
+        ws[cellRef] = { t: 'n', f: formula, v: 0 };
+      });
+    });
+
+    // Totals row
+    const totalsRow = firstDataRow + rows.length;
+    const totalsRowData = ['ИТОГО'];
+    workTypes.forEach((_, wtIdx) => {
+      const colStart = 1 + wtIdx * 3;
+      const totalCol = colAddr(colStart + 2);
+      totalsRowData.push('', '', {
+        t: 'n',
+        f: `=SUM(${totalCol}${firstDataRow}:${totalCol}${totalsRow - 1})`,
+        v: 0,
+      });
+    });
+    XLSX.utils.sheet_add_aoa(ws, [totalsRowData], { origin: { r: totalsRow - 1, c: 0 } });
+
+    // Merges for header rows
+    const merges = [];
+    workTypes.forEach((_, wtIdx) => {
+      const colStart = 1 + wtIdx * 3;
+      merges.push({ s: { r: 0, c: colStart }, e: { r: 0, c: colStart + 2 } }); // wt name
+      merges.push({ s: { r: 1, c: colStart }, e: { r: 1, c: colStart + 2 } }); // specialist
+      merges.push({ s: { r: 2, c: colStart }, e: { r: 2, c: colStart + 2 } }); // globalRisk
+    });
+    ws['!merges'] = merges;
+
+    // Column widths
+    const cols = [{ wch: 30 }];
+    workTypes.forEach(() => {
+      cols.push({ wch: 10 }, { wch: 8 }, { wch: 10 });
+    });
+    ws['!cols'] = cols;
+
+    XLSX.utils.book_append_sheet(wb, ws, 'Смета');
+    XLSX.writeFile(wb, 'smeta.xlsx');
+  };
+
   return (
     <div className="space-y-4">
       {/* Toolbar */}
@@ -131,6 +239,15 @@ export default function SmetaPage() {
         >
           + Вид работы
         </button>
+
+        {workTypes.length > 0 && (
+          <button
+            onClick={exportToXlsx}
+            className="bg-green-600 text-white px-3 py-1.5 rounded text-sm font-medium hover:bg-green-700 transition mt-0.5"
+          >
+            📥 Выгрузить в Excel
+          </button>
+        )}
 
       </div>
 
