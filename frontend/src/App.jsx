@@ -29,10 +29,14 @@ const defaultSettings = {
 };
 
 const defaultRows = [
-  { id: genId(), type: 'project', name: 'Административная панель', parentId: null, estimates: {} },
-  { id: genId(), type: 'epic', name: 'Авторизация', parentId: null, estimates: {} },
-  { id: genId(), type: 'task', name: 'Экран входа', parentId: null, estimates: { analytics: { clean: 8, riskCoeff: 0 }, design: { clean: 12, riskCoeff: 0 }, backend: { clean: 16, riskCoeff: 1.2 }, frontend: { clean: 16, riskCoeff: 0 } } },
-  { id: genId(), type: 'task', name: 'Восстановление пароля', parentId: null, estimates: { analytics: { clean: 4, riskCoeff: 0 }, design: { clean: 8, riskCoeff: 0 }, backend: { clean: 12, riskCoeff: 0 }, frontend: { clean: 12, riskCoeff: 0 } } },
+  { id: genId(), name: 'Аналитика и проектирование', indent: 0, estimates: { analytics: { clean: 40, riskCoeff: 0 } } },
+  { id: genId(), name: 'Сбор требований', indent: 1, estimates: { analytics: { clean: 16, riskCoeff: 0 } } },
+  { id: genId(), name: 'Прототипирование', indent: 1, estimates: { analytics: { clean: 24, riskCoeff: 0 } } },
+  { id: genId(), name: 'Разработка', indent: 0, estimates: {} },
+  { id: genId(), name: 'Backend API', indent: 1, estimates: { backend: { clean: 80, riskCoeff: 1.2 } } },
+  { id: genId(), name: 'Frontend интерфейс', indent: 1, estimates: { frontend: { clean: 64, riskCoeff: 0 } } },
+  { id: genId(), name: 'Экран авторизации', indent: 2, estimates: { frontend: { clean: 16, riskCoeff: 0 } } },
+  { id: genId(), name: 'Экран каталога', indent: 2, estimates: { frontend: { clean: 24, riskCoeff: 0 } } },
 ];
 
 function App() {
@@ -45,9 +49,9 @@ function App() {
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
-    fetch(`${API_URL}/api/smeta/config`)
+    fetch(`${API_URL}/api/rates`)
       .then((r) => r.json())
-      .then((d) => setRates(d.rateDetails || []))
+      .then((d) => setRates(d || []))
       .catch(console.error);
   }, []);
 
@@ -85,50 +89,86 @@ function App() {
     const id = 'wt_' + genId();
     setWorkTypes([...workTypes, { id, name: 'Новый вид', type: 'input' }]);
   };
-
-  const updateWorkType = (id, patch) => {
-    setWorkTypes(workTypes.map((wt) => (wt.id === id ? { ...wt, ...patch } : wt)));
-  };
-
+  const updateWorkType = (id, patch) => setWorkTypes(workTypes.map((wt) => (wt.id === id ? { ...wt, ...patch } : wt)));
   const removeWorkType = (id) => {
     if (['testing', 'management'].includes(id)) return;
     setWorkTypes(workTypes.filter((wt) => wt.id !== id));
   };
 
-  const addRow = (parentId = null, type = 'task') => {
-    setRows([...rows, { id: genId(), type, name: '', parentId, estimates: {} }]);
+  const addRow = (afterIndex) => {
+    const indent = afterIndex >= 0 ? (rows[afterIndex]?.indent || 0) : 0;
+    const newRow = { id: genId(), name: '', indent, estimates: {} };
+    if (afterIndex >= 0) {
+      const newRows = [...rows];
+      newRows.splice(afterIndex + 1, 0, newRow);
+      setRows(newRows);
+    } else {
+      setRows([...rows, newRow]);
+    }
   };
 
-  const updateRow = (id, patch) => {
-    setRows(rows.map((r) => (r.id === id ? { ...r, ...patch } : r)));
-  };
+  const removeRow = (index) => {
+    const toRemove = new Set();
+    const id = rows[index].id;
+    toRemove.add(id);
 
-  const removeRow = (id) => {
-    const toRemove = new Set([id]);
-    let changed = true;
-    while (changed) {
-      changed = false;
-      rows.forEach((r) => {
-        if (!toRemove.has(r.id) && toRemove.has(r.parentId)) {
-          toRemove.add(r.id);
-          changed = true;
+    // Находим всех потомков
+    function findDescendants(parentId) {
+      rows.forEach((r, i) => {
+        if (r.id === parentId) {
+          const parentIndent = r.indent || 0;
+          // Все строки ниже с большим indent
+          for (let j = i + 1; j < rows.length; j++) {
+            if ((rows[j].indent || 0) > parentIndent) {
+              toRemove.add(rows[j].id);
+            } else {
+              break;
+            }
+          }
         }
       });
     }
+    findDescendants(id);
+
     setRows(rows.filter((r) => !toRemove.has(r.id)));
   };
 
-  const updateEstimate = (rowId, wtId, patch) => {
-    setRows(rows.map((r) => {
-      if (r.id !== rowId) return r;
-      return {
-        ...r,
-        estimates: {
-          ...r.estimates,
-          [wtId]: { ...r.estimates?.[wtId], ...patch },
-        },
-      };
-    }));
+  const indentRow = (index) => {
+    if (index <= 0) return;
+    const prevIndent = rows[index - 1]?.indent || 0;
+    const currentIndent = rows[index].indent || 0;
+    if (currentIndent < prevIndent + 1) {
+      const newRows = [...rows];
+      newRows[index] = { ...newRows[index], indent: currentIndent + 1 };
+      setRows(newRows);
+    }
+  };
+
+  const outdentRow = (index) => {
+    const currentIndent = rows[index].indent || 0;
+    if (currentIndent > 0) {
+      const newRows = [...rows];
+      newRows[index] = { ...newRows[index], indent: currentIndent - 1 };
+      setRows(newRows);
+    }
+  };
+
+  const updateRowName = (index, name) => {
+    const newRows = [...rows];
+    newRows[index] = { ...newRows[index], name };
+    setRows(newRows);
+  };
+
+  const updateEstimate = (rowIndex, wtId, patch) => {
+    const newRows = [...rows];
+    newRows[rowIndex] = {
+      ...newRows[rowIndex],
+      estimates: {
+        ...newRows[rowIndex].estimates,
+        [wtId]: { ...newRows[rowIndex].estimates?.[wtId], ...patch },
+      },
+    };
+    setRows(newRows);
   };
 
   const exportXlsx = async () => {
@@ -162,19 +202,6 @@ function App() {
     }
   };
 
-  const flatRows = [];
-  const renderTree = (parentId = null, depth = 0) => {
-    const children = rows.filter((r) => r.parentId === parentId);
-    children.forEach((row) => {
-      const calc = calculated.rows?.find((c) => c.id === row.id);
-      flatRows.push({ ...row, depth, calc });
-      renderTree(row.id, depth + 1);
-    });
-  };
-  renderTree();
-
-  const inputTypes = workTypes.filter((wt) => wt.type === 'input');
-  const autoTypes = workTypes.filter((wt) => wt.type === 'auto');
   const totals = calculated.totals || {};
 
   if (page === 'rates') {
@@ -231,23 +258,15 @@ function App() {
                     <option value="auto">Авторасчёт</option>
                   </select>
                 </td>
-                <td style={td}>
-                  <input type="number" step="0.1" value={settings.riskCoeffs[wt.id] || 1} onChange={(e) => updateSetting(`riskCoeffs.${wt.id}`, Number(e.target.value))} style={{ ...inputSmall, width: 60 }} />
-                </td>
+                <td style={td}><input type="number" step="0.1" value={settings.riskCoeffs[wt.id] || 1} onChange={(e) => updateSetting(`riskCoeffs.${wt.id}`, Number(e.target.value))} style={{ ...inputSmall, width: 60 }} /></td>
                 <td style={td}>
                   <select value={settings.specialists[wt.id] || ''} onChange={(e) => updateSetting(`specialists.${wt.id}`, e.target.value)} style={inputSmall}>
                     <option value="">—</option>
                     {rates.map((r) => (<option key={r.role} value={r.role}>{r.role}</option>))}
                   </select>
                 </td>
-                <td style={td}>
-                  <input type="number" value={settings.salePrices[wt.id] || 0} onChange={(e) => updateSetting(`salePrices.${wt.id}`, Number(e.target.value))} style={{ ...inputSmall, width: 90 }} />
-                </td>
-                <td style={td}>
-                  {!['testing', 'management'].includes(wt.id) && (
-                    <button onClick={() => removeWorkType(wt.id)} style={btnSmall}>✕</button>
-                  )}
-                </td>
+                <td style={td}><input type="number" value={settings.salePrices[wt.id] || 0} onChange={(e) => updateSetting(`salePrices.${wt.id}`, Number(e.target.value))} style={{ ...inputSmall, width: 90 }} /></td>
+                <td style={td}>{!['testing', 'management'].includes(wt.id) && <button onClick={() => removeWorkType(wt.id)} style={btnSmall}>✕</button>}</td>
               </tr>
             ))}
           </tbody>
@@ -261,18 +280,16 @@ function App() {
         <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 900 }}>
           <thead>
             <tr style={{ background: '#f0f4f8' }}>
-              <th style={th}>Уровень</th>
-              <th style={th}>Название</th>
+              <th style={th}></th>
+              <th style={th}>Задача</th>
               {workTypes.map((wt) => (
-                <th key={wt.id} style={th} colSpan={3}>
-                  {wt.name}
-                </th>
+                <th key={wt.id} style={th} colSpan={3}>{wt.name}</th>
               ))}
               <th style={th}></th>
             </tr>
             <tr style={{ background: '#f8fafc' }}>
-              <th style={th}></th>
-              <th style={th}></th>
+              <th style={thSmall}></th>
+              <th style={thSmall}></th>
               {workTypes.map((wt) => (
                 <>
                   <th key={`${wt.id}_c`} style={thSmall}>чист.</th>
@@ -280,40 +297,51 @@ function App() {
                   <th key={`${wt.id}_t`} style={thSmall}>итого</th>
                 </>
               ))}
-              <th style={th}></th>
+              <th style={thSmall}></th>
             </tr>
           </thead>
           <tbody>
-            {flatRows.map((row) => {
-              const isTask = row.type === 'task';
+            {rows.map((row, idx) => {
+              const calc = calculated.rows?.find((c) => c.id === row.id);
+              const hasChildren = rows.some((r, i) => i > idx && (r.indent || 0) > (row.indent || 0) && !rows.slice(idx + 1, i).some((rr) => (rr.indent || 0) <= (row.indent || 0)));
+              const isLeaf = !hasChildren;
+              const indentPx = (row.indent || 0) * 20;
+
               return (
-                <tr key={row.id} style={{ background: row.type === 'project' ? '#e8f4e8' : row.type === 'epic' ? '#f0f0f0' : '#fff' }}>
-                  <td style={td}>{['Проект', 'Эпик', 'Задача'][row.depth] || 'Задача'}</td>
+                <tr key={row.id}>
+                  <td style={{ ...td, whiteSpace: 'nowrap' }}>
+                    <button onClick={() => outdentRow(idx)} disabled={(row.indent || 0) === 0} style={btnSmall}>←</button>
+                    <button onClick={() => indentRow(idx)} style={btnSmall}>→</button>
+                  </td>
                   <td style={td}>
-                    <input value={row.name} onChange={(e) => updateRow(row.id, { name: e.target.value })} style={{ ...inputSmall, fontWeight: row.type !== 'task' ? 'bold' : 'normal', width: 200 }} />
+                    <input
+                      value={row.name}
+                      onChange={(e) => updateRowName(idx, e.target.value)}
+                      style={{ ...inputSmall, fontWeight: isLeaf ? 'normal' : 'bold', marginLeft: indentPx, width: 220 - indentPx }}
+                    />
                   </td>
                   {workTypes.map((wt) => {
                     const est = row.estimates?.[wt.id] || { clean: 0, riskCoeff: 0 };
-                    const calc = row.calc?.calculated?.[wt.id] || { clean: 0, total: 0 };
+                    const c = calc?.calculated?.[wt.id] || { clean: 0, total: 0 };
                     if (wt.type === 'input') {
                       return (
                         <>
                           <td key={`${wt.id}_c`} style={td}>
-                            {isTask ? (
-                              <input type="number" value={est.clean || 0} onChange={(e) => updateEstimate(row.id, wt.id, { clean: Number(e.target.value) })} style={{ ...inputSmall, width: 55 }} />
+                            {isLeaf ? (
+                              <input type="number" value={est.clean || 0} onChange={(e) => updateEstimate(idx, wt.id, { clean: Number(e.target.value) })} style={{ ...inputSmall, width: 55 }} />
                             ) : (
-                              <span>{calc.clean.toLocaleString('ru-RU', { maximumFractionDigits: 0 })}</span>
+                              <span>{c.clean.toLocaleString('ru-RU', { maximumFractionDigits: 0 })}</span>
                             )}
                           </td>
                           <td key={`${wt.id}_r`} style={td}>
-                            {isTask ? (
-                              <input type="number" step="0.1" value={est.riskCoeff || 0} onChange={(e) => updateEstimate(row.id, wt.id, { riskCoeff: Number(e.target.value) })} style={{ ...inputSmall, width: 45 }} />
+                            {isLeaf ? (
+                              <input type="number" step="0.1" value={est.riskCoeff || 0} onChange={(e) => updateEstimate(idx, wt.id, { riskCoeff: Number(e.target.value) })} style={{ ...inputSmall, width: 45 }} />
                             ) : (
                               <span>—</span>
                             )}
                           </td>
                           <td key={`${wt.id}_t`} style={{ ...td, fontWeight: 'bold' }}>
-                            {calc.total.toLocaleString('ru-RU', { maximumFractionDigits: 0 })}
+                            {c.total.toLocaleString('ru-RU', { maximumFractionDigits: 0 })}
                           </td>
                         </>
                       );
@@ -321,36 +349,32 @@ function App() {
                       return (
                         <>
                           <td key={`${wt.id}_c`} style={{ ...td, background: '#f8f8f8' }}>
-                            {calc.clean.toLocaleString('ru-RU', { maximumFractionDigits: 0 })}
+                            {c.clean.toLocaleString('ru-RU', { maximumFractionDigits: 0 })}
                           </td>
                           <td key={`${wt.id}_r`} style={{ ...td, background: '#f8f8f8' }}>
-                            {isTask ? (
-                              <input type="number" step="0.1" value={est.riskCoeff || 0} onChange={(e) => updateEstimate(row.id, wt.id, { riskCoeff: Number(e.target.value) })} style={{ ...inputSmall, width: 45 }} />
+                            {isLeaf ? (
+                              <input type="number" step="0.1" value={est.riskCoeff || 0} onChange={(e) => updateEstimate(idx, wt.id, { riskCoeff: Number(e.target.value) })} style={{ ...inputSmall, width: 45 }} />
                             ) : (
                               <span>—</span>
                             )}
                           </td>
                           <td key={`${wt.id}_t`} style={{ ...td, fontWeight: 'bold', background: '#f8f8f8' }}>
-                            {calc.total.toLocaleString('ru-RU', { maximumFractionDigits: 0 })}
+                            {c.total.toLocaleString('ru-RU', { maximumFractionDigits: 0 })}
                           </td>
                         </>
                       );
                     }
                   })}
-                  <td style={td}>
-                    <button onClick={() => addRow(row.id, 'task')} style={btnSmall} title="Добавить подзадачу">+</button>
-                    <button onClick={() => removeRow(row.id)} style={{ ...btnSmall, color: '#c00' }}>✕</button>
+                  <td style={{ ...td, whiteSpace: 'nowrap' }}>
+                    <button onClick={() => addRow(idx)} style={btnSmall} title="Добавить строку ниже">+</button>
+                    <button onClick={() => removeRow(idx)} style={{ ...btnSmall, color: '#c00' }}>✕</button>
                   </td>
                 </tr>
               );
             })}
           </tbody>
         </table>
-        <div style={{ display: 'flex', gap: 10, marginTop: 10 }}>
-          <button onClick={() => addRow(null, 'project')} style={btn}>+ Проект</button>
-          <button onClick={() => addRow(null, 'epic')} style={btn}>+ Эпик</button>
-          <button onClick={() => addRow(null, 'task')} style={btn}>+ Задача</button>
-        </div>
+        <button onClick={() => addRow(-1)} style={{ ...btn, marginTop: 10 }}>+ Добавить строку</button>
       </div>
 
       {/* ИТОГИ */}
@@ -365,31 +389,19 @@ function App() {
             </tr>
           </thead>
           <tbody>
-            <tr>
-              <td style={td}>Чистые часы</td>
-              {workTypes.map((wt) => (<td key={wt.id} style={td}>{(totals[wt.id]?.clean || 0).toLocaleString('ru-RU', { maximumFractionDigits: 0 })}</td>))}
-              <td style={{ ...td, fontWeight: 'bold' }}>{(totals.total?.clean || 0).toLocaleString('ru-RU', { maximumFractionDigits: 0 })}</td>
-            </tr>
-            <tr>
-              <td style={td}>Часы с рисками</td>
-              {workTypes.map((wt) => (<td key={wt.id} style={td}>{(totals[wt.id]?.total || 0).toLocaleString('ru-RU', { maximumFractionDigits: 0 })}</td>))}
-              <td style={{ ...td, fontWeight: 'bold' }}>{(totals.total?.total || 0).toLocaleString('ru-RU', { maximumFractionDigits: 0 })}</td>
-            </tr>
-            <tr>
-              <td style={td}>Себестоимость</td>
-              {workTypes.map((wt) => (<td key={wt.id} style={td}>{(totals[wt.id]?.costPrice || 0).toLocaleString('ru-RU', { maximumFractionDigits: 0 })}</td>))}
-              <td style={{ ...td, fontWeight: 'bold' }}>{(totals.total?.costPrice || 0).toLocaleString('ru-RU', { maximumFractionDigits: 0 })}</td>
-            </tr>
-            <tr>
-              <td style={td}>Стоимость продажи</td>
-              {workTypes.map((wt) => (<td key={wt.id} style={td}>{(totals[wt.id]?.costTotal || 0).toLocaleString('ru-RU', { maximumFractionDigits: 0 })}</td>))}
-              <td style={{ ...td, fontWeight: 'bold' }}>{(totals.total?.costTotal || 0).toLocaleString('ru-RU', { maximumFractionDigits: 0 })}</td>
-            </tr>
-            <tr>
-              <td style={td}>Маржа</td>
-              {workTypes.map((wt) => (<td key={wt.id} style={td}>{(totals[wt.id]?.margin || 0).toLocaleString('ru-RU', { maximumFractionDigits: 0 })}</td>))}
-              <td style={{ ...td, fontWeight: 'bold' }}>{(totals.total?.margin || 0).toLocaleString('ru-RU', { maximumFractionDigits: 0 })}</td>
-            </tr>
+            {[
+              { label: 'Чистые часы', key: 'clean' },
+              { label: 'Часы с рисками', key: 'total' },
+              { label: 'Себестоимость', key: 'costPrice' },
+              { label: 'Стоимость продажи', key: 'costTotal' },
+              { label: 'Маржа', key: 'margin' },
+            ].map((row) => (
+              <tr key={row.key}>
+                <td style={td}>{row.label}</td>
+                {workTypes.map((wt) => (<td key={wt.id} style={td}>{(totals[wt.id]?.[row.key] || 0).toLocaleString('ru-RU', { maximumFractionDigits: 0 })}</td>))}
+                <td style={{ ...td, fontWeight: 'bold' }}>{(totals.total?.[row.key] || 0).toLocaleString('ru-RU', { maximumFractionDigits: 0 })}</td>
+              </tr>
+            ))}
             <tr>
               <td style={td}>R_GM</td>
               {workTypes.map((wt) => (<td key={wt.id} style={td}>{(totals[wt.id]?.rgm || 0).toLocaleString('ru-RU', { style: 'percent', minimumFractionDigits: 1 })}</td>))}
@@ -412,6 +424,6 @@ const th = { border: '1px solid #ccc', padding: '6px', textAlign: 'left', fontSi
 const thSmall = { border: '1px solid #ccc', padding: '4px', textAlign: 'center', fontSize: 11, background: '#f8fafc' };
 const td = { border: '1px solid #ddd', padding: '5px', fontSize: 12 };
 const btn = { padding: '6px 12px', border: '1px solid #ccc', borderRadius: 4, cursor: 'pointer', background: '#fff', fontSize: 13 };
-const btnSmall = { padding: '2px 6px', border: '1px solid #ccc', borderRadius: 4, cursor: 'pointer', background: '#fff', fontSize: 12, marginRight: 3 };
+const btnSmall = { padding: '2px 6px', border: '1px solid #ccc', borderRadius: 4, cursor: 'pointer', background: '#fff', fontSize: 12, marginRight: 2 };
 
 export default App;

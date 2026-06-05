@@ -7,11 +7,6 @@ const borderThin = {
 };
 
 function colLetter(idx) {
-  // idx 0 -> A, 1 -> B, ...
-  return String.fromCharCode(65 + idx);
-}
-
-function colLetterExtended(idx) {
   if (idx < 26) return String.fromCharCode(65 + idx);
   return String.fromCharCode(64 + Math.floor(idx / 26)) + String.fromCharCode(65 + (idx % 26));
 }
@@ -35,74 +30,65 @@ async function generate(data = {}, options = {}) {
     rows = [],
   } = data;
 
-  // Рассчитаем mapping колонок
-  // A=0, B=1, C=2, D=3, E=4 — фиксированные
-  // Каждый workType занимает 3 колонки
   const fixedCols = 5; // A-E
   const colMap = {};
   workTypes.forEach((wt, i) => {
     const base = fixedCols + i * 3;
     colMap[wt.id] = {
-      clean: colLetterExtended(base),
-      risk: colLetterExtended(base + 1),
-      total: colLetterExtended(base + 2),
+      clean: colLetter(base),
+      risk: colLetter(base + 1),
+      total: colLetter(base + 2),
     };
   });
 
   const lastDataCol = fixedCols + workTypes.length * 3 - 1;
-  const lastColLetter = colLetterExtended(lastDataCol);
+  const lastColLetter = colLetter(lastDataCol);
 
   let r = 1;
 
-  // ===== СТРОКА 1: Настройки риска =====
+  // Row 1
   ws.getCell(`A${r}`).value = 'применить к-т риска в целом на работы';
   ws.getCell(`B${r}`).value = applyGlobalRisk ? 'да' : 'нет';
   ws.getCell(`C${r}`).value = { formula: `IF(B${r}="да","укажите к-т риска для работ","")` };
-
   workTypes.forEach((wt) => {
-    const c = colMap[wt.id].risk;
-    ws.getCell(`${c}${r}`).value = riskCoeffs[wt.id] || 1;
+    ws.getCell(`${colMap[wt.id].risk}${r}`).value = riskCoeffs[wt.id] || 1;
   });
   r++;
 
-  // ===== СТРОКА 2: К-ты на разработку и работы =====
+  // Row 2
   const testWt = workTypes.find((w) => w.id === 'testing');
   const mgmtWt = workTypes.find((w) => w.id === 'management');
   if (testWt) {
-    const c = colMap[testWt.id].clean;
-    ws.getCell(`${c}${r}`).value = 'К-т на разработку';
+    ws.getCell(`${colMap[testWt.id].clean}${r}`).value = 'К-т на разработку';
     ws.getCell(`${colMap[testWt.id].risk}${r}`).value = devToTestCoeff;
   }
   if (mgmtWt) {
-    const c = colMap[mgmtWt.id].clean;
-    ws.getCell(`${c}${r}`).value = 'К-т на работы';
+    ws.getCell(`${colMap[mgmtWt.id].clean}${r}`).value = 'К-т на работы';
     ws.getCell(`${colMap[mgmtWt.id].risk}${r}`).value = workToMgmtCoeff;
   }
   r++;
 
-  // ===== СТРОКА 3: Основные заголовки =====
+  // Row 3
   ws.getCell(`A${r}`).value = 'Эпик';
   ws.getCell(`B${r}`).value = 'Фича';
   ws.getCell(`C${r}`).value = 'Описание';
   ws.getCell(`D${r}`).value = 'Показатель';
   ws.getCell(`E${r}`).value = 'Вид работ';
   workTypes.forEach((wt) => {
-    const c = colMap[wt.id].clean;
-    ws.mergeCells(`${c}${r}:${colMap[wt.id].total}${r}`);
-    ws.getCell(`${c}${r}`).value = wt.name;
+    ws.mergeCells(`${colMap[wt.id].clean}${r}:${colMap[wt.id].total}${r}`);
+    ws.getCell(`${colMap[wt.id].clean}${r}`).value = wt.name;
   });
   r++;
 
-  // ===== СТРОКА 4: Специалисты =====
+  // Row 4
   ws.getCell(`D${r}`).value = 'Состав рисков (обоснование к-та риска)';
   ws.getCell(`E${r}`).value = 'Специалист';
   workTypes.forEach((wt) => {
-    const c = colMap[wt.id].clean;
-    ws.getCell(`${c}${r}`).value = specialists[wt.id] || '';
+    ws.getCell(`${colMap[wt.id].clean}${r}`).value = specialists[wt.id] || '';
   });
   r++;
 
-  // ===== СТРОКА 5: Подзаголовки =====
+  // Row 5
   ws.getCell(`E${r}`).value = 'Оценка';
   workTypes.forEach((wt) => {
     ws.getCell(`${colMap[wt.id].clean}${r}`).value = 'чистая оценка';
@@ -111,251 +97,181 @@ async function generate(data = {}, options = {}) {
   });
   r++;
 
-  // ===== СТРОКА 6: Цена продажи =====
+  // Row 6
   ws.getCell(`A${r}`).value = 'Название';
   ws.getCell(`D${r}`).value = 'Цена продажи (руб/час)';
-  // E6 = средняя цена
-  const firstCleanCol = colLetterExtended(fixedCols);
-  const lastCleanCol = colLetterExtended(fixedCols + workTypes.length * 3 - 3); // последняя "чистая"
+  const firstCleanCol = colLetter(fixedCols);
   ws.getCell(`E${r}`).value = { formula: `IFERROR(E${r + 2}/E${r + 1},0)` };
-
   workTypes.forEach((wt) => {
     ws.getCell(`${colMap[wt.id].clean}${r}`).value = salePrices[wt.id] || 0;
   });
   r++;
 
-  // ===== СТРОКА 7: Часы без ОР и рисков =====
-  ws.getCell(`D${r}`).value = 'Часы (без ОР и рисков)';
-  ws.getCell(`E${r}`).value = { formula: `SUM(${firstCleanCol}${r}:${lastCleanCol}${r})` };
-  workTypes.forEach((wt) => {
-    const c = colMap[wt.id].clean;
-    ws.getCell(`${c}${r}`).value = { formula: `SUMIFS(${c}15:${c}999,$A15:$A999,"")` };
-  });
-  r++;
+  // Rows 7-14: totals
+  const totalRows = [
+    { label: 'Часы (без ОР и рисков)', formulaClean: (c) => `SUMIFS(${c}15:${c}999,$A15:$A999,"")`, formulaE: `SUM(${firstCleanCol}${r}:${lastColLetter}${r})` },
+    { label: 'Стоимость продажи (без ОР и рисков)', formulaClean: (c) => `ROUNDUP(${c}${r - 1},0)*${c}${r - 2}`, formulaE: `SUM(${firstCleanCol}${r}:${lastColLetter}${r})` },
+    { label: 'К-т на ОР и риски', formulaClean: (c) => `IFERROR(${c}${r + 1}/${c}${r - 2},0)`, formulaE: `IFERROR(E${r + 1}/E${r - 2},0)` },
+    { label: 'Часы (всего)', formulaClean: (c, t) => `SUMIFS(${t}15:${t}999,$A15:$A999,"")`, formulaE: `SUM(${firstCleanCol}${r}:${lastColLetter}${r})` },
+    { label: 'Себестоимость (всего)', formulaClean: (c, t) => `IF(${c}${r - 1}>0, IF(VLOOKUP(${c}4,ставки!$A$2:$C$999,3,FALSE)=0,VLOOKUP(${c}4,ставки!$A$2:$C$999,2,FALSE),VLOOKUP(${c}4,ставки!$A$2:$C$999,3,FALSE))*${c}${r - 1},0)`, formulaE: `SUM(${firstCleanCol}${r}:${lastColLetter}${r})` },
+    { label: 'Стоимость продажи (всего)', formulaClean: (c) => `ROUNDUP(${c}${r - 2},0)*${c}${r - 6}`, formulaE: `SUM(${firstCleanCol}${r}:${lastColLetter}${r})` },
+    { label: 'Маржа (GrossMargin) (всего)', formulaClean: (c, t) => `IF(${c}${r - 3}>0, (${c}${r - 1}-IF(VLOOKUP(${c}4,ставки!$A$2:$C$999,3,FALSE)=0,VLOOKUP(${c}4,ставки!$A$2:$C$999,2,FALSE),VLOOKUP(${c}4,ставки!$A$2:$C$999,3,FALSE))*${c}${r - 3}),0)`, formulaE: `SUM(${firstCleanCol}${r}:${lastColLetter}${r})` },
+    { label: 'R_GM', formulaClean: (c) => `IFERROR(${c}${r - 1}/${c}${r - 2},0)`, formulaE: `IFERROR(E${r - 1}/E${r - 2},0)` },
+  ];
 
-  // ===== СТРОКА 8: Стоимость продажи без ОР и рисков =====
-  ws.getCell(`D${r}`).value = 'Стоимость продажи (без ОР и рисков)';
-  ws.getCell(`E${r}`).value = { formula: `SUM(${firstCleanCol}${r}:${lastCleanCol}${r})` };
-  workTypes.forEach((wt) => {
-    const c = colMap[wt.id].clean;
-    ws.getCell(`${c}${r}`).value = { formula: `ROUNDUP(${c}${r - 1},0)*${c}${r - 2}` };
+  totalRows.forEach((tr) => {
+    ws.getCell(`D${r}`).value = tr.label;
+    ws.getCell(`E${r}`).value = { formula: tr.formulaE.replace(/\$r/g, String(r)) };
+    workTypes.forEach((wt) => {
+      const cm = colMap[wt.id];
+      const f = tr.formulaClean(cm.clean, cm.total).replace(/\$r/g, String(r));
+      ws.getCell(`${cm.clean}${r}`).value = { formula: f };
+    });
+    r++;
   });
-  r++;
 
-  // ===== СТРОКА 9: К-т на ОР и риски =====
-  ws.getCell(`D${r}`).value = 'К-т на ОР и риски';
-  ws.getCell(`E${r}`).value = { formula: `IFERROR(E${r + 1}/E${r - 2},0)` };
-  workTypes.forEach((wt) => {
-    const c = colMap[wt.id].clean;
-    ws.getCell(`${c}${r}`).value = { formula: `IFERROR(${c}${r + 1}/${c}${r - 2},0)` };
-  });
-  r++;
-
-  // ===== СТРОКА 10: Часы всего =====
-  ws.getCell(`D${r}`).value = 'Часы (всего)';
-  ws.getCell(`E${r}`).value = { formula: `SUM(${firstCleanCol}${r}:${lastCleanCol}${r})` };
-  workTypes.forEach((wt) => {
-    const cTotal = colMap[wt.id].total;
-    ws.getCell(`${colMap[wt.id].clean}${r}`).value = { formula: `SUMIFS(${cTotal}15:${cTotal}999,$A15:$A999,"")` };
-  });
-  r++;
-
-  // ===== СТРОКА 11: Себестоимость =====
-  ws.getCell(`D${r}`).value = 'Себестоимость (всего)';
-  ws.getCell(`E${r}`).value = { formula: `SUM(${firstCleanCol}${r}:${lastCleanCol}${r})` };
-  workTypes.forEach((wt) => {
-    const c = colMap[wt.id].clean;
-    const cTotal = colMap[wt.id].total;
-    const specCell = `${c}4`;
-    ws.getCell(`${c}${r}`).value = {
-      formula: `IF(${c}${r - 1}>0, IF(VLOOKUP(${specCell},ставки!$A$2:$C$999,3,FALSE)=0,VLOOKUP(${specCell},ставки!$A$2:$C$999,2,FALSE),VLOOKUP(${specCell},ставки!$A$2:$C$999,3,FALSE))*${c}${r - 1},0)`,
-    };
-  });
-  r++;
-
-  // ===== СТРОКА 12: Стоимость продажи всего =====
-  ws.getCell(`D${r}`).value = 'Стоимость продажи (всего)';
-  ws.getCell(`E${r}`).value = { formula: `SUM(${firstCleanCol}${r}:${lastCleanCol}${r})` };
-  workTypes.forEach((wt) => {
-    const c = colMap[wt.id].clean;
-    ws.getCell(`${c}${r}`).value = { formula: `ROUNDUP(${c}${r - 2},0)*${c}${r - 6}` };
-  });
-  r++;
-
-  // ===== СТРОКА 13: Маржа =====
-  ws.getCell(`D${r}`).value = 'Маржа (GrossMargin) (всего)';
-  ws.getCell(`E${r}`).value = { formula: `SUM(${firstCleanCol}${r}:${lastCleanCol}${r})` };
-  workTypes.forEach((wt) => {
-    const c = colMap[wt.id].clean;
-    const specCell = `${c}4`;
-    ws.getCell(`${c}${r}`).value = {
-      formula: `IF(${c}${r - 3}>0, (${c}${r - 1}-IF(VLOOKUP(${specCell},ставки!$A$2:$C$999,3,FALSE)=0,VLOOKUP(${specCell},ставки!$A$2:$C$999,2,FALSE),VLOOKUP(${specCell},ставки!$A$2:$C$999,3,FALSE))*${c}${r - 3}),0)`,
-    };
-  });
-  r++;
-
-  // ===== СТРОКА 14: R_GM =====
-  ws.getCell(`D${r}`).value = 'R_GM';
-  ws.getCell(`E${r}`).value = { formula: `IFERROR(E${r - 1}/E${r - 2},0)` };
-  workTypes.forEach((wt) => {
-    const c = colMap[wt.id].clean;
-    ws.getCell(`${c}${r}`).value = { formula: `IFERROR(${c}${r - 1}/${c}${r - 2},0)` };
-  });
-  r++;
-
-  // ===== СТИЛИ ШАПКИ =====
-  for (let styleRow = 1; styleRow <= r - 1; styleRow++) {
+  // Styles for header
+  for (let sr = 1; sr <= r - 1; sr++) {
     for (let c = 1; c <= fixedCols + workTypes.length * 3; c++) {
-      const cell = ws.getCell(styleRow, c);
-      if (!cell.value) continue;
-      cell.border = borderThin;
-      if (styleRow === 3 || styleRow === 5) {
-        cell.font = { bold: true };
-        cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFD9E1F2' } };
-      }
-      if ([6, 7, 8, 9, 10, 11, 12, 13, 14].includes(styleRow)) {
-        if (c >= fixedCols + 1) {
-          cell.numFmt = '#,##0.00';
+      const cell = ws.getCell(sr, c);
+      if (cell.value) {
+        cell.border = borderThin;
+        if ([3, 5].includes(sr)) {
+          cell.font = { bold: true };
+          cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFD9E1F2' } };
         }
       }
     }
   }
 
-  // ===== ДАННЫЕ =====
-  const dataStartRow = r;
-  const rowIndexMap = new Map(); // id -> excel row
+  // ===== DATA ROWS =====
+  const rowIndexMap = new Map();
 
-  function writeRows(items, parentId = null) {
-    items.forEach((item) => {
-      const children = items.filter((i) => i.parentId === item.id);
-      const hasChildren = children.length > 0;
-
-      if (item.type === 'project') {
-        ws.getCell(`A${r}`).value = item.name;
-      } else if (item.type === 'epic') {
-        ws.getCell(`A${r}`).value = item.name || 'Эпик';
+  function buildParentMap(dataRows) {
+    const map = new Map();
+    dataRows.forEach((row, idx) => {
+      const indent = row.indent || 0;
+      if (indent === 0) {
+        map.set(row.id, null);
       } else {
-        ws.getCell(`B${r}`).value = item.name || 'Задача';
-      }
-
-      ws.getCell(`E${r}`).value = { formula: `SUMIF($${firstCleanCol}$5:$${lastColLetter}$5,$${colLetterExtended(fixedCols + 2)}$5,${firstCleanCol}${r}:${lastColLetter}${r})` };
-
-      workTypes.forEach((wt) => {
-        const cm = colMap[wt.id];
-        const est = item.estimates?.[wt.id] || { clean: 0, riskCoeff: 0 };
-        const calc = item.calculated?.[wt.id] || { clean: 0, total: 0 };
-
-        if (item.type === 'task') {
-          if (wt.type === 'input') {
-            ws.getCell(`${cm.clean}${r}`).value = est.clean || 0;
-            ws.getCell(`${cm.risk}${r}`).value = est.riskCoeff || 0;
-
-            // Итого = ROUNDUP(чистая * (риск==0?1:риск) * (общий_риск?globalRisk:1), 0)
-            const globalRiskCell = `${cm.risk}1`;
-            ws.getCell(`${cm.total}${r}`).value = {
-              formula: `ROUNDUP(IF($B$1="да",(IF(${cm.risk}${r}<>0,(${cm.clean}${r}*1*(IF(${cm.risk}${r}=0,1,${cm.risk}${r}))),(${cm.clean}${r}*1*(IF(${cm.risk}${r}=0,1,${cm.risk}${r}))))*${globalRiskCell},(IF(${cm.risk}${r}<>0,(${cm.clean}${r}*1*(IF(${cm.risk}${r}=0,1,${cm.risk}${r}))),(${cm.clean}${r}*1*(IF(${cm.risk}${r}=0,1,${cm.risk}${r}))))*1)),0)`,
-            };
-          } else if (wt.id === 'testing') {
-            // Чистая = ROUNDUP(сумма_итогов_input * N$2, 0)
-            const inputTotals = workTypes
-              .filter((w) => w.type === 'input')
-              .map((w) => `${colMap[w.id].total}${r}`)
-              .join('+');
-            const devCoeffCell = `${colMap[wt.id].risk}2`; // N2
-            ws.getCell(`${cm.clean}${r}`).value = { formula: `ROUNDUP((${inputTotals})*${devCoeffCell},0)` };
-            ws.getCell(`${cm.risk}${r}`).value = est.riskCoeff || 0;
-            const globalRiskCell = `${cm.risk}1`;
-            ws.getCell(`${cm.total}${r}`).value = {
-              formula: `ROUNDUP(IF($B$1="да",(IF(${cm.risk}${r}<>0,(${cm.clean}${r}*1*(IF(${cm.risk}${r}=0,1,${cm.risk}${r}))),(${cm.clean}${r}*1*(IF(${cm.risk}${r}=0,1,${cm.risk}${r}))))*${globalRiskCell},(IF(${cm.risk}${r}<>0,(${cm.clean}${r}*1*(IF(${cm.risk}${r}=0,1,${cm.risk}${r}))),(${cm.clean}${r}*1*(IF(${cm.risk}${r}=0,1,${cm.risk}${r}))))*1)),0)`,
-            };
-          } else if (wt.id === 'management') {
-            // Чистая = (сумма_чистых_всех_работ) * Q$2
-            const allClean = workTypes
-              .filter((w) => w.id !== 'management')
-              .map((w) => `${colMap[w.id].clean}${r}`)
-              .join('+');
-            const mgmtCoeffCell = `${cm.risk}2`; // Q2
-            ws.getCell(`${cm.clean}${r}`).value = { formula: `(${allClean})*${mgmtCoeffCell}` };
-            ws.getCell(`${cm.risk}${r}`).value = est.riskCoeff || 0;
-            const globalRiskCell = `${cm.risk}1`;
-            ws.getCell(`${cm.total}${r}`).value = {
-              formula: `ROUNDUP(IF($B$1="да",(IF(${cm.risk}${r}<>0,(${cm.clean}${r}*1*(IF(${cm.risk}${r}=0,1,${cm.risk}${r}))),(${cm.clean}${r}*1*(IF(${cm.risk}${r}=0,1,${cm.risk}${r}))))*${globalRiskCell},(IF(${cm.risk}${r}<>0,(${cm.clean}${r}*1*(IF(${cm.risk}${r}=0,1,${cm.risk}${r}))),(${cm.clean}${r}*1*(IF(${cm.risk}${r}=0,1,${cm.risk}${r}))))*1)),0)`,
-            };
+        let parentId = null;
+        for (let i = idx - 1; i >= 0; i--) {
+          if ((dataRows[i].indent || 0) === indent - 1) {
+            parentId = dataRows[i].id;
+            break;
           }
+        }
+        map.set(row.id, parentId);
+      }
+    });
+    return map;
+  }
+
+  const parentMap = buildParentMap(rows);
+
+  // Check if row has children
+  const hasChildren = new Set();
+  rows.forEach((row) => {
+    const parentId = parentMap.get(row.id);
+    if (parentId) hasChildren.add(parentId);
+  });
+
+  rows.forEach((row) => {
+    const indent = row.indent || 0;
+    const isLeaf = !hasChildren.has(row.id);
+
+    // A = blank for leaf, name for non-leaf (like original template)
+    if (!isLeaf) {
+      ws.getCell(`A${r}`).value = row.name;
+    } else {
+      ws.getCell(`B${r}`).value = row.name;
+    }
+
+    ws.getCell(`E${r}`).value = { formula: `SUMIF($${firstCleanCol}$5:$${lastColLetter}$5,$${colLetter(fixedCols + 2)}$5,${firstCleanCol}${r}:${lastColLetter}${r})` };
+
+    workTypes.forEach((wt) => {
+      const cm = colMap[wt.id];
+      const est = row.estimates?.[wt.id] || { clean: 0, riskCoeff: 0 };
+      const calc = row.calculated?.[wt.id] || { clean: 0, total: 0 };
+
+      if (isLeaf) {
+        if (wt.type === 'input') {
+          ws.getCell(`${cm.clean}${r}`).value = est.clean || 0;
+          ws.getCell(`${cm.risk}${r}`).value = est.riskCoeff || 0;
+          const globalRiskCell = `${cm.risk}1`;
+          ws.getCell(`${cm.total}${r}`).value = {
+            formula: `ROUNDUP(IF($B$1="да",(IF(${cm.risk}${r}<>0,(${cm.clean}${r}*1*(IF(${cm.risk}${r}=0,1,${cm.risk}${r}))),(${cm.clean}${r}*1*(IF(${cm.risk}${r}=0,1,${cm.risk}${r}))))*${globalRiskCell},(IF(${cm.risk}${r}<>0,(${cm.clean}${r}*1*(IF(${cm.risk}${r}=0,1,${cm.risk}${r}))),(${cm.clean}${r}*1*(IF(${cm.risk}${r}=0,1,${cm.risk}${r}))))*1)),0)`,
+          };
+        } else if (wt.id === 'testing') {
+          const inputTotals = workTypes
+            .filter((w) => w.type === 'input')
+            .map((w) => `${colMap[w.id].total}${r}`)
+            .join('+');
+          const devCoeffCell = `${cm.risk}2`;
+          ws.getCell(`${cm.clean}${r}`).value = { formula: `ROUNDUP((${inputTotals})*${devCoeffCell},0)` };
+          ws.getCell(`${cm.risk}${r}`).value = est.riskCoeff || 0;
+          const globalRiskCell = `${cm.risk}1`;
+          ws.getCell(`${cm.total}${r}`).value = {
+            formula: `ROUNDUP(IF($B$1="да",(IF(${cm.risk}${r}<>0,(${cm.clean}${r}*1*(IF(${cm.risk}${r}=0,1,${cm.risk}${r}))),(${cm.clean}${r}*1*(IF(${cm.risk}${r}=0,1,${cm.risk}${r}))))*${globalRiskCell},(IF(${cm.risk}${r}<>0,(${cm.clean}${r}*1*(IF(${cm.risk}${r}=0,1,${cm.risk}${r}))),(${cm.clean}${r}*1*(IF(${cm.risk}${r}=0,1,${cm.risk}${r}))))*1)),0)`,
+          };
+        } else if (wt.id === 'management') {
+          const allClean = workTypes
+            .filter((w) => w.id !== 'management')
+            .map((w) => `${colMap[w.id].clean}${r}`)
+            .join('+');
+          const mgmtCoeffCell = `${cm.risk}2`;
+          ws.getCell(`${cm.clean}${r}`).value = { formula: `(${allClean})*${mgmtCoeffCell}` };
+          ws.getCell(`${cm.risk}${r}`).value = est.riskCoeff || 0;
+          const globalRiskCell = `${cm.risk}1`;
+          ws.getCell(`${cm.total}${r}`).value = {
+            formula: `ROUNDUP(IF($B$1="да",(IF(${cm.risk}${r}<>0,(${cm.clean}${r}*1*(IF(${cm.risk}${r}=0,1,${cm.risk}${r}))),(${cm.clean}${r}*1*(IF(${cm.risk}${r}=0,1,${cm.risk}${r}))))*${globalRiskCell},(IF(${cm.risk}${r}<>0,(${cm.clean}${r}*1*(IF(${cm.risk}${r}=0,1,${cm.risk}${r}))),(${cm.clean}${r}*1*(IF(${cm.risk}${r}=0,1,${cm.risk}${r}))))*1)),0)`,
+          };
+        }
+      } else {
+        // Parent row — sum children
+        const childRows = rows
+          .filter((rr) => parentMap.get(rr.id) === row.id)
+          .map((rr) => rowIndexMap.get(rr.id))
+          .filter(Boolean);
+
+        if (childRows.length > 0) {
+          ws.getCell(`${cm.clean}${r}`).value = { formula: `SUM(${childRows.map((cr) => `${cm.clean}${cr}`).join('+')})` };
+          ws.getCell(`${cm.total}${r}`).value = { formula: `SUM(${childRows.map((cr) => `${cm.total}${cr}`).join('+')})` };
         } else {
-          // Эпик / Проект — суммы дочерних
-          const childRows = items
-            .filter((i) => i.parentId === item.id)
-            .map((i) => rowIndexMap.get(i.id))
-            .filter(Boolean);
-
-          if (childRows.length > 0) {
-            const sumClean = childRows.map((cr) => `${cm.clean}${cr}`).join('+');
-            const sumTotal = childRows.map((cr) => `${cm.total}${cr}`).join('+');
-            ws.getCell(`${cm.clean}${r}`).value = { formula: `SUM(${sumClean})` };
-            ws.getCell(`${cm.total}${r}`).value = { formula: `SUM(${sumTotal})` };
-          } else {
-            ws.getCell(`${cm.clean}${r}`).value = 0;
-            ws.getCell(`${cm.total}${r}`).value = 0;
-          }
+          ws.getCell(`${cm.clean}${r}`).value = 0;
+          ws.getCell(`${cm.total}${r}`).value = 0;
         }
+      }
 
-        // Стили
-        ws.getCell(`${cm.clean}${r}`).border = borderThin;
-        ws.getCell(`${cm.risk}${r}`).border = borderThin;
-        ws.getCell(`${cm.total}${r}`).border = borderThin;
-        ws.getCell(`${cm.clean}${r}`).numFmt = '#,##0';
-        ws.getCell(`${cm.total}${r}`).numFmt = '#,##0';
-        if (item.type !== 'task') {
-          ws.getCell(`${cm.clean}${r}`).font = { bold: true };
-          ws.getCell(`${cm.total}${r}`).font = { bold: true };
-        }
+      [cm.clean, cm.risk, cm.total].forEach((c) => {
+        ws.getCell(`${c}${r}`).border = borderThin;
       });
-
-      // Стили фиксированных колонок
-      for (let c = 1; c <= 5; c++) {
-        ws.getCell(r, c).border = borderThin;
-      }
-      if (item.type !== 'task') {
-        ws.getCell(r, 1).font = { bold: true };
-      }
-
-      rowIndexMap.set(item.id, r);
-      r++;
-
-      if (hasChildren) {
-        writeRows(items, item.id);
+      ws.getCell(`${cm.clean}${r}`).numFmt = '#,##0';
+      ws.getCell(`${cm.total}${r}`).numFmt = '#,##0';
+      if (!isLeaf) {
+        ws.getCell(`${cm.clean}${r}`).font = { bold: true };
+        ws.getCell(`${cm.total}${r}`).font = { bold: true };
       }
     });
-  }
 
-  // Нужно правильно построить дерево
-  // Найдём корни
-  const roots = rows.filter((row) => !row.parentId);
-  function buildTree(parents) {
-    parents.forEach((p) => {
-      writeRows([p]);
-      const children = rows.filter((r) => r.parentId === p.id);
-      if (children.length) buildTree(children);
-    });
-  }
-  buildTree(roots);
+    for (let c = 1; c <= 5; c++) {
+      ws.getCell(r, c).border = borderThin;
+    }
+    if (!isLeaf) {
+      ws.getCell(r, 1).font = { bold: true };
+    }
 
-  // ===== ШИРИНЫ КОЛОНОК =====
+    rowIndexMap.set(row.id, r);
+    r++;
+  });
+
+  // Column widths
   ws.columns = [
-    { width: 25 }, // A
-    { width: 25 }, // B
-    { width: 20 }, // C
-    { width: 20 }, // D
-    { width: 12 }, // E
-    ...workTypes.flatMap(() => [
-      { width: 12 }, // чистая
-      { width: 10 }, // риск
-      { width: 12 }, // итого
-    ]),
+    { width: 25 }, { width: 25 }, { width: 20 }, { width: 20 }, { width: 12 },
+    ...workTypes.flatMap(() => [{ width: 12 }, { width: 10 }, { width: 12 }]),
   ];
 
-  // ===== ЛИСТ "СТАВКИ" =====
+  // Rates sheet
   const wsRates = workbook.addWorksheet('ставки');
   wsRates.getCell('A1').value = 'роль';
   wsRates.getCell('B1').value = 'партнерские';

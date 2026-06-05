@@ -1,14 +1,13 @@
 const { getRate } = require('../data/rates');
 
-// Виды работ по умолчанию
 const defaultWorkTypes = [
-  { id: 'analytics', name: 'Аналитика', type: 'input', cols: { clean: 'F', risk: 'G', total: 'H' } },
-  { id: 'design', name: 'Дизайн', type: 'input', cols: { clean: 'I', risk: 'J', total: 'K' } },
-  { id: 'backend', name: 'Backend', type: 'input', cols: { clean: 'L', risk: 'M', total: 'N' } },
-  { id: 'frontend', name: 'Frontend', type: 'input', cols: { clean: 'O', risk: 'P', total: 'Q' } },
-  { id: 'mobile', name: 'Mobile', type: 'input', cols: { clean: 'R', risk: 'S', total: 'T' } },
-  { id: 'testing', name: 'Тестирование', type: 'auto', autoSource: 'dev_totals', cols: { clean: 'U', risk: 'V', total: 'W' } },
-  { id: 'management', name: 'Управление', type: 'auto', autoSource: 'all_clean', cols: { clean: 'X', risk: 'Y', total: 'Z' } },
+  { id: 'analytics', name: 'Аналитика', type: 'input' },
+  { id: 'design', name: 'Дизайн', type: 'input' },
+  { id: 'backend', name: 'Backend', type: 'input' },
+  { id: 'frontend', name: 'Frontend', type: 'input' },
+  { id: 'mobile', name: 'Mobile', type: 'input' },
+  { id: 'testing', name: 'Тестирование', type: 'auto', autoSource: 'dev_totals' },
+  { id: 'management', name: 'Управление', type: 'auto', autoSource: 'all_clean' },
 ];
 
 function roundUp(num) {
@@ -17,6 +16,34 @@ function roundUp(num) {
 
 function getTaskRisk(coeff) {
   return coeff === 0 || coeff === undefined || coeff === null ? 1 : coeff;
+}
+
+function buildParentMap(rows) {
+  // Определяем parentId по indent для каждой строки
+  const parents = [];
+  const parentMap = new Map();
+
+  rows.forEach((row, idx) => {
+    const indent = row.indent || 0;
+    if (indent === 0) {
+      parentMap.set(row.id, null);
+      parents.length = 0;
+      parents[0] = row.id;
+    } else {
+      // Ищем ближайшего родителя с indent = current - 1
+      let parentId = null;
+      for (let i = idx - 1; i >= 0; i--) {
+        if ((rows[i].indent || 0) === indent - 1) {
+          parentId = rows[i].id;
+          break;
+        }
+      }
+      parentMap.set(row.id, parentId);
+      parents[indent] = row.id;
+    }
+  });
+
+  return parentMap;
 }
 
 function calculateTaskRow(task, settings, workTypes = defaultWorkTypes) {
@@ -29,36 +56,26 @@ function calculateTaskRow(task, settings, workTypes = defaultWorkTypes) {
   const testingType = workTypes.find((wt) => wt.id === 'testing');
   const mgmtType = workTypes.find((wt) => wt.id === 'management');
 
-  // 1. Расчёт input-видов работ
   inputTypes.forEach((wt) => {
     const est = task.estimates?.[wt.id] || { clean: 0, riskCoeff: 0 };
     const taskRisk = getTaskRisk(est.riskCoeff);
     const globalRisk = settings.applyGlobalRisk ? (settings.riskCoeffs[wt.id] || 1) : 1;
     const total = roundUp(est.clean * taskRisk * globalRisk);
-    result.calculated[wt.id] = {
-      clean: est.clean || 0,
-      total,
-    };
+    result.calculated[wt.id] = { clean: est.clean || 0, total };
   });
 
-  // 2. Расчёт Тестирования = % от суммы итогов input-видов
   if (testingType) {
     const devTotal = inputTypes.reduce(
-      (sum, wt) => sum + (result.calculated[wt.id]?.total || 0),
-      0
+      (sum, wt) => sum + (result.calculated[wt.id]?.total || 0), 0
     );
     const cleanTesting = roundUp(devTotal * (settings.devToTestCoeff || 0));
     const est = task.estimates?.testing || { riskCoeff: 0 };
     const taskRisk = getTaskRisk(est.riskCoeff);
     const globalRisk = settings.applyGlobalRisk ? (settings.riskCoeffs.testing || 1) : 1;
     const totalTesting = roundUp(cleanTesting * taskRisk * globalRisk);
-    result.calculated.testing = {
-      clean: cleanTesting,
-      total: totalTesting,
-    };
+    result.calculated.testing = { clean: cleanTesting, total: totalTesting };
   }
 
-  // 3. Расчёт Управления = % от суммы чистых оценок всех работ (кроме управления)
   if (mgmtType) {
     const allClean = workTypes
       .filter((wt) => wt.id !== 'management')
@@ -68,17 +85,13 @@ function calculateTaskRow(task, settings, workTypes = defaultWorkTypes) {
     const taskRisk = getTaskRisk(est.riskCoeff);
     const globalRisk = settings.applyGlobalRisk ? (settings.riskCoeffs.management || 1) : 1;
     const totalMgmt = roundUp(cleanMgmt * taskRisk * globalRisk);
-    result.calculated.management = {
-      clean: cleanMgmt,
-      total: totalMgmt,
-    };
+    result.calculated.management = { clean: cleanMgmt, total: totalMgmt };
   }
 
   return result;
 }
 
 function aggregateRows(rows, workTypes = defaultWorkTypes) {
-  // rows — массив уже рассчитанных строк
   const aggregated = {};
   workTypes.forEach((wt) => {
     aggregated[wt.id] = {
@@ -90,62 +103,44 @@ function aggregateRows(rows, workTypes = defaultWorkTypes) {
 }
 
 function calculateTree(rows, settings, workTypes = defaultWorkTypes) {
+  const parentMap = buildParentMap(rows);
   const map = new Map();
+
+  // Сначала рассчитываем листья (строки без детей)
+  const hasChildren = new Set();
+  rows.forEach((row) => {
+    const parentId = parentMap.get(row.id);
+    if (parentId) hasChildren.add(parentId);
+  });
+
+  // Обрабатываем в обратном порядке (снизу вверх)
   const calculated = [];
+  const calcMap = new Map();
 
-  // Сначала рассчитываем листья (task)
-  rows.forEach((row) => {
-    if (row.type === 'task') {
+  for (let i = rows.length - 1; i >= 0; i--) {
+    const row = rows[i];
+    if (!hasChildren.has(row.id)) {
+      // Лист
       const calc = calculateTaskRow(row, settings, workTypes);
-      map.set(row.id, calc);
-      calculated.push(calc);
+      calcMap.set(row.id, calc);
+    } else {
+      // Узел — суммируем детей
+      const children = rows.filter((r) => parentMap.get(r.id) === row.id);
+      const childCalcs = children.map((c) => calcMap.get(c.id));
+      const agg = aggregateRows(childCalcs, workTypes);
+      calcMap.set(row.id, { ...row, calculated: agg });
     }
-  });
-
-  // Затем эпики и проекты — bottom-up
-  // Нужно обработать в правильном порядке (сначала дети, потом родители)
-  const byParent = new Map();
-  rows.forEach((row) => {
-    if (row.parentId) {
-      if (!byParent.has(row.parentId)) byParent.set(row.parentId, []);
-      byParent.set(row.parentId, [...byParent.get(row.parentId), row]);
-    }
-  });
-
-  function processRow(row) {
-    if (map.has(row.id)) return map.get(row.id);
-
-    const children = rows.filter((r) => r.parentId === row.id);
-    const childResults = children.map((c) => processRow(c));
-    const agg = aggregateRows(childResults, workTypes);
-
-    const result = {
-      ...row,
-      calculated: agg,
-    };
-    map.set(row.id, result);
-    return result;
   }
 
-  // Обрабатываем все корневые элементы
-  const roots = rows.filter((r) => !r.parentId);
-  const rootResults = roots.map((r) => processRow(r));
-
-  // Собираем в плоский список в исходном порядке
-  const finalRows = [];
-  function flatten(row) {
-    finalRows.push(map.get(row.id));
-    const children = rows.filter((r) => r.parentId === row.id);
-    children.forEach((c) => flatten(c));
-  }
-  roots.forEach((r) => flatten(r));
-
-  return finalRows;
+  // Собираем в исходном порядке
+  return rows.map((row) => calcMap.get(row.id));
 }
 
 function calculateTotals(tasks, settings, workTypes = defaultWorkTypes) {
-  // tasks — только строки типа 'task' (листья)
-  const leafTasks = tasks.filter((t) => t.type === 'task');
+  const leafTasks = tasks.filter((t) => {
+    // Листья — те у кого нет детей
+    return !tasks.some((other) => other.parentId === t.id);
+  });
 
   const totals = {};
   workTypes.forEach((wt) => {
@@ -175,7 +170,6 @@ function calculateTotals(tasks, settings, workTypes = defaultWorkTypes) {
     };
   });
 
-  // Общие итоги
   totals.total = {
     clean: Object.values(totals).reduce((s, v) => s + (v.clean || 0), 0),
     total: Object.values(totals).reduce((s, v) => s + (v.total || 0), 0),
@@ -195,4 +189,5 @@ module.exports = {
   calculateTaskRow,
   calculateTree,
   calculateTotals,
+  buildParentMap,
 };
