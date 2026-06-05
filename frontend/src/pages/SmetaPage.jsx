@@ -63,11 +63,12 @@ export default function SmetaPage() {
   const updateEstimate = (rowId, wtId, field, value) => {
     setRows(rows.map((r) => {
       if (r.id !== rowId) return r;
+      const current = r.estimates?.[wtId] || { clean: 0, risk: 1 };
       return {
         ...r,
         estimates: {
           ...r.estimates,
-          [wtId]: { ...r.estimates?.[wtId], [field]: Number(value) || (field === 'risk' ? 1 : 0) },
+          [wtId]: { ...current, [field]: Number(value) || (field === 'risk' ? 1 : 0) },
         },
       };
     }));
@@ -123,63 +124,66 @@ export default function SmetaPage() {
             <thead>
               {/* Row 1: Work type names */}
               <tr className="bg-gray-100 sticky top-0 z-20">
-                <th className="border border-gray-300 px-3 py-2 text-left font-semibold text-gray-700 min-w-[140px] sticky left-0 bg-gray-100 z-30">Задача</th>
+                <th className="border border-gray-300 px-2 py-1.5 text-left font-semibold text-gray-700 min-w-[120px] sticky left-0 bg-gray-100 z-30">Задача</th>
                 {workTypes.map((wt, idx) => (
-                  <th key={wt.id} colSpan={3} className="border border-gray-300 px-2 py-2 text-center min-w-[240px]">
-                    <div className="flex items-center justify-center gap-2">
+                  <th key={wt.id} colSpan={3} className="border border-gray-300 px-1 py-1 text-center min-w-[180px]">
+                    <div className="flex items-center justify-center gap-1">
                       {idx > 0 && (
-                        <button onClick={() => moveWorkType(idx, -1)} className="text-gray-400 hover:text-gray-600 text-xs">←</button>
+                        <button onClick={() => moveWorkType(idx, -1)} className="text-gray-400 hover:text-gray-600 text-[10px]">←</button>
                       )}
-                      <span className="font-bold text-gray-800">{wt.name}</span>
+                      <span className="font-bold text-gray-800 text-xs">{wt.name}</span>
                       {idx < workTypes.length - 1 && (
-                        <button onClick={() => moveWorkType(idx, 1)} className="text-gray-400 hover:text-gray-600 text-xs">→</button>
+                        <button onClick={() => moveWorkType(idx, 1)} className="text-gray-400 hover:text-gray-600 text-[10px]">→</button>
                       )}
-                      <button onClick={() => removeWorkType(wt.id)} className="text-red-400 hover:text-red-600 text-xs ml-1">✕</button>
+                      <button onClick={() => removeWorkType(wt.id)} className="text-red-400 hover:text-red-600 text-[10px] ml-0.5">✕</button>
                     </div>
                   </th>
                 ))}
-                <th className="border border-gray-300 w-10" />
+                <th className="border border-gray-300 w-8" />
               </tr>
-              {/* Row 2: Specialist & global risk */}
-              <tr className="bg-gray-50 sticky top-[36px] z-20">
-                <td className="border border-gray-300 px-3 py-1.5 text-xs text-gray-500 sticky left-0 bg-gray-50 z-30">Специалист / Риск</td>
+              {/* Row 2: Specialist */}
+              <tr className="bg-gray-50 sticky top-[28px] z-20">
+                <td className="border border-gray-300 px-2 py-1 text-[10px] text-gray-500 sticky left-0 bg-gray-50 z-30">Специалист</td>
                 {workTypes.map((wt) => (
-                  <td key={wt.id} colSpan={3} className="border border-gray-300 px-2 py-1.5">
-                    <div className="flex items-center justify-center gap-2">
-                      <select
-                        value={wt.specialistId}
-                        onChange={(e) => updateWorkType(wt.id, { specialistId: e.target.value })}
-                        className="text-xs border border-gray-300 rounded px-2 py-0.5 bg-white"
-                      >
-                        <option value="">—</option>
-                        {rates.map((r) => (
-                          <option key={r.id} value={r.id}>{r.role}</option>
-                        ))}
-                      </select>
-                      <span className="text-xs text-gray-400">|</span>
-                      <div className="flex items-center gap-1">
-                        <span className="text-xs text-gray-500">Риск:</span>
-                        <input
-                          type="number"
-                          step="0.1"
-                          value={wt.globalRisk}
-                          onChange={(e) => updateWorkType(wt.id, { globalRisk: Number(e.target.value) || 1 })}
-                          className="w-12 text-xs border border-gray-300 rounded px-1 py-0.5 text-center"
-                        />
-                      </div>
-                    </div>
+                  <td key={wt.id} colSpan={3} className="border border-gray-300 px-1 py-1">
+                    <select
+                      value={wt.specialistId}
+                      onChange={(e) => updateWorkType(wt.id, { specialistId: e.target.value })}
+                      className="text-[10px] border border-gray-300 rounded px-1 py-0.5 bg-white w-full"
+                    >
+                      <option value="">—</option>
+                      {rates.map((r) => (
+                        <option key={r.id} value={r.id}>{r.role}</option>
+                      ))}
+                    </select>
                   </td>
                 ))}
                 <td className="border border-gray-300" />
               </tr>
-              {/* Row 3: Sub-headers */}
-              <tr className="bg-gray-50 sticky top-[62px] z-20">
-                <td className="border border-gray-300 px-3 py-1.5 text-xs text-gray-500 font-medium sticky left-0 bg-gray-50 z-30">Название</td>
+              {/* Row 3: Global risk */}
+              <tr className="bg-gray-50 sticky top-[48px] z-20">
+                <td className="border border-gray-300 px-2 py-1 text-[10px] text-gray-500 sticky left-0 bg-gray-50 z-30">Общий риск</td>
+                {workTypes.map((wt) => (
+                  <td key={wt.id} colSpan={3} className="border border-gray-300 px-1 py-1 text-center">
+                    <input
+                      type="number"
+                      step="0.1"
+                      value={wt.globalRisk}
+                      onChange={(e) => updateWorkType(wt.id, { globalRisk: Number(e.target.value) || 1 })}
+                      className="w-14 text-[10px] border border-gray-300 rounded px-1 py-0.5 text-center"
+                    />
+                  </td>
+                ))}
+                <td className="border border-gray-300" />
+              </tr>
+              {/* Row 4: Sub-headers */}
+              <tr className="bg-gray-50 sticky top-[68px] z-20">
+                <td className="border border-gray-300 px-2 py-1 text-[10px] text-gray-500 font-medium sticky left-0 bg-gray-50 z-30">Название</td>
                 {workTypes.map((wt) => (
                   <>
-                    <td key={`${wt.id}_c`} className="border border-gray-300 px-2 py-1.5 text-xs text-gray-500 text-center font-medium">Чистая</td>
-                    <td key={`${wt.id}_r`} className="border border-gray-300 px-2 py-1.5 text-xs text-gray-500 text-center font-medium">Риск</td>
-                    <td key={`${wt.id}_t`} className="border border-gray-300 px-2 py-1.5 text-xs text-gray-500 text-center font-medium">Итого</td>
+                    <td key={`${wt.id}_c`} className="border border-gray-300 px-1 py-1 text-[10px] text-gray-500 text-center font-medium w-16">Чист</td>
+                    <td key={`${wt.id}_r`} className="border border-gray-300 px-1 py-1 text-[10px] text-gray-500 text-center font-medium w-14">Риск</td>
+                    <td key={`${wt.id}_t`} className="border border-gray-300 px-1 py-1 text-[10px] text-gray-500 text-center font-medium w-14">Итого</td>
                   </>
                 ))}
                 <td className="border border-gray-300" />
@@ -188,16 +192,13 @@ export default function SmetaPage() {
             <tbody>
               {rows.map((row) => (
                 <tr key={row.id} className="hover:bg-blue-50/30">
-                  <td className="border border-gray-300 px-2 py-1.5 sticky left-0 bg-white z-10">
+                  <td className="border border-gray-300 px-2 py-1 sticky left-0 bg-white z-10 align-top">
                     <textarea
                       value={row.name}
-                      onChange={(e) => {
-                        updateRowName(row.id, e.target.value);
-                        e.target.style.height = 'auto';
-                        e.target.style.height = e.target.scrollHeight + 'px';
-                      }}
-                      className="w-full px-2 py-1 text-xs border border-transparent hover:border-gray-300 focus:border-blue-500 rounded outline-none bg-transparent resize-none whitespace-normal break-words min-h-[24px]"
-                      placeholder="Название задачи"
+                      onChange={(e) => updateRowName(row.id, e.target.value)}
+                      style={{ fieldSizing: 'content', minHeight: '20px' }}
+                      className="w-full px-1 py-0.5 text-xs border border-transparent hover:border-gray-300 focus:border-blue-500 rounded outline-none bg-transparent resize-none whitespace-normal break-words leading-tight"
+                      placeholder="Название"
                     />
                   </td>
                   {workTypes.map((wt) => {
@@ -205,31 +206,31 @@ export default function SmetaPage() {
                     const total = calcTotal(est.clean, est.risk, wt.globalRisk);
                     return (
                       <>
-                        <td key={`${wt.id}_c`} className="border border-gray-300 px-1 py-1">
+                        <td key={`${wt.id}_c`} className="border border-gray-300 px-1 py-1 align-top">
                           <input
                             type="number"
                             value={est.clean || ''}
                             onChange={(e) => updateEstimate(row.id, wt.id, 'clean', e.target.value)}
-                            className="w-full px-2 py-1 text-sm text-center border border-transparent hover:border-gray-300 focus:border-blue-500 rounded outline-none bg-transparent"
+                            className="w-full px-1 py-0.5 text-xs text-center border border-transparent hover:border-gray-300 focus:border-blue-500 rounded outline-none bg-transparent"
                           />
                         </td>
-                        <td key={`${wt.id}_r`} className="border border-gray-300 px-1 py-1">
+                        <td key={`${wt.id}_r`} className="border border-gray-300 px-1 py-1 align-top">
                           <input
                             type="number"
                             step="0.1"
                             value={est.risk || ''}
                             onChange={(e) => updateEstimate(row.id, wt.id, 'risk', e.target.value)}
-                            className="w-full px-2 py-1 text-sm text-center border border-transparent hover:border-gray-300 focus:border-blue-500 rounded outline-none bg-transparent"
+                            className="w-full px-1 py-0.5 text-xs text-center border border-transparent hover:border-gray-300 focus:border-blue-500 rounded outline-none bg-transparent"
                           />
                         </td>
-                        <td key={`${wt.id}_t`} className="border border-gray-300 px-2 py-1 text-center font-medium bg-gray-50/50 text-gray-800">
+                        <td key={`${wt.id}_t`} className="border border-gray-300 px-1 py-1 text-center font-medium bg-gray-50/50 text-gray-800 text-xs align-top">
                           {total}
                         </td>
                       </>
                     );
                   })}
-                  <td className="border border-gray-300 px-2 py-1 text-center">
-                    <button onClick={() => removeRow(row.id)} className="text-red-400 hover:text-red-600 text-sm">✕</button>
+                  <td className="border border-gray-300 px-1 py-1 text-center align-top">
+                    <button onClick={() => removeRow(row.id)} className="text-red-400 hover:text-red-600 text-xs">✕</button>
                   </td>
                 </tr>
               ))}
