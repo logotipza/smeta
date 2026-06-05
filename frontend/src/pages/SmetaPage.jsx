@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001';
 
@@ -59,6 +59,28 @@ export default function SmetaPage() {
   const updateRowName = (id, name) => {
     setRows(rows.map((r) => (r.id === id ? { ...r, name } : r)));
   };
+
+  function AutoResizeTextarea({ value, onChange, placeholder, className }) {
+    const ref = useRef(null);
+
+    useEffect(() => {
+      const el = ref.current;
+      if (!el) return;
+      el.style.height = 'auto';
+      el.style.height = el.scrollHeight + 'px';
+    }, [value]);
+
+    return (
+      <textarea
+        ref={ref}
+        value={value}
+        onChange={onChange}
+        placeholder={placeholder}
+        className={className}
+        rows={1}
+      />
+    );
+  }
 
   const updateEstimate = (rowId, wtId, field, value) => {
     setRows(rows.map((r) => {
@@ -193,10 +215,10 @@ export default function SmetaPage() {
               {rows.map((row) => (
                 <tr key={row.id} className="hover:bg-blue-50/30">
                   <td className="border border-gray-300 px-2 py-1 sticky left-0 bg-white z-10 align-top">
-                    <textarea
+                    <AutoResizeTextarea
                       value={row.name}
                       onChange={(e) => updateRowName(row.id, e.target.value)}
-                      className="w-full px-1 py-0.5 text-xs border border-transparent hover:border-gray-300 focus:border-blue-500 rounded outline-none bg-transparent resize-none whitespace-normal break-words leading-tight min-h-[20px]"
+                      className="w-full px-1 py-0.5 text-xs border border-transparent hover:border-gray-300 focus:border-blue-500 rounded outline-none bg-transparent resize-none whitespace-normal break-words leading-tight"
                       placeholder="Название"
                     />
                   </td>
