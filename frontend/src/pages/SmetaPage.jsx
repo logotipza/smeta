@@ -230,18 +230,16 @@ export default function SmetaPage() {
                   </td>
                 </tr>
               ))}
-              {rows.length === 0 && (
-                <tr>
-                  <td colSpan={workTypes.length * 3 + 2} className="border border-gray-300 px-6 py-8 text-center">
-                    <button
-                      onClick={addRow}
-                      className="bg-white border border-gray-300 text-gray-700 px-4 py-2 rounded text-sm font-medium hover:bg-gray-50 transition"
-                    >
-                      + Строка
-                    </button>
-                  </td>
-                </tr>
-              )}
+              <tr>
+                <td colSpan={workTypes.length * 3 + 2} className="border border-gray-300 px-6 py-4 text-center">
+                  <button
+                    onClick={addRow}
+                    className="bg-white border border-gray-300 text-gray-700 px-4 py-2 rounded text-sm font-medium hover:bg-gray-50 transition"
+                  >
+                    + Строка
+                  </button>
+                </td>
+              </tr>
             </tbody>
           </table>
         </div>
