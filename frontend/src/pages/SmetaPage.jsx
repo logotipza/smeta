@@ -108,13 +108,7 @@ export default function SmetaPage() {
         >
           + Вид работы
         </button>
-        <div className="w-px h-6 bg-gray-300 mx-1" />
-        <button
-          onClick={addRow}
-          className="bg-white border border-gray-300 text-gray-700 px-3 py-1.5 rounded text-sm font-medium hover:bg-gray-50 transition"
-        >
-          + Строка
-        </button>
+
       </div>
 
       {workTypes.length === 0 && (
@@ -238,8 +232,13 @@ export default function SmetaPage() {
               ))}
               {rows.length === 0 && (
                 <tr>
-                  <td colSpan={workTypes.length * 3 + 2} className="border border-gray-300 px-6 py-8 text-center text-gray-400 text-sm">
-                    Нет строк. Нажмите «+ Строка» выше.
+                  <td colSpan={workTypes.length * 3 + 2} className="border border-gray-300 px-6 py-8 text-center">
+                    <button
+                      onClick={addRow}
+                      className="bg-white border border-gray-300 text-gray-700 px-4 py-2 rounded text-sm font-medium hover:bg-gray-50 transition"
+                    >
+                      + Строка
+                    </button>
                   </td>
                 </tr>
               )}
