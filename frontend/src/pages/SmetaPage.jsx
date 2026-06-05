@@ -11,6 +11,7 @@ export default function SmetaPage() {
   const [workTypes, setWorkTypes] = useState([]);
   const [rows, setRows] = useState([]);
   const [newWorkTypeName, setNewWorkTypeName] = useState('');
+  const [workTypeError, setWorkTypeError] = useState(false);
 
   useEffect(() => {
     fetch(`${API_URL}/api/rates`)
@@ -21,7 +22,11 @@ export default function SmetaPage() {
 
   const addWorkType = () => {
     const name = newWorkTypeName.trim();
-    if (!name) return;
+    if (!name) {
+      setWorkTypeError(true);
+      return;
+    }
+    setWorkTypeError(false);
     setWorkTypes([...workTypes, { id: genId(), name, specialistId: '', globalRisk: 1 }]);
     setNewWorkTypeName('');
   };
@@ -83,18 +88,23 @@ export default function SmetaPage() {
   return (
     <div className="space-y-4">
       {/* Toolbar */}
-      <div className="flex items-center gap-3 bg-white border rounded-lg px-4 py-3 shadow-sm">
-        <input
-          type="text"
-          value={newWorkTypeName}
-          onChange={(e) => setNewWorkTypeName(e.target.value)}
-          onKeyDown={(e) => e.key === 'Enter' && addWorkType()}
-          className="border border-gray-300 rounded px-3 py-1.5 text-sm w-56 focus:outline-none focus:ring-2 focus:ring-blue-500"
-          placeholder="Новый вид работы..."
-        />
+      <div className="flex items-start gap-3 bg-white border rounded-lg px-4 py-3 shadow-sm">
+        <div className="flex flex-col gap-1">
+          <input
+            type="text"
+            value={newWorkTypeName}
+            onChange={(e) => { setNewWorkTypeName(e.target.value); setWorkTypeError(false); }}
+            onKeyDown={(e) => e.key === 'Enter' && addWorkType()}
+            className={`border rounded px-3 py-1.5 text-sm w-56 focus:outline-none focus:ring-2 transition ${workTypeError ? 'border-red-500 ring-1 ring-red-500 bg-red-50' : 'border-gray-300 focus:ring-blue-500'}`}
+            placeholder="Новый вид работы..."
+          />
+          {workTypeError && (
+            <span className="text-xs text-red-600 font-medium">Введите название вида работы</span>
+          )}
+        </div>
         <button
           onClick={addWorkType}
-          className="bg-blue-600 text-white px-3 py-1.5 rounded text-sm font-medium hover:bg-blue-700 transition"
+          className="bg-blue-600 text-white px-3 py-1.5 rounded text-sm font-medium hover:bg-blue-700 transition mt-0.5"
         >
           + Вид работы
         </button>
