@@ -37,6 +37,8 @@ export default function SmetaPage() {
   const [workTypeError, setWorkTypeError] = useState(false);
   const [draggingIdx, setDraggingIdx] = useState(null);
   const [dragOverIdx, setDragOverIdx] = useState(null);
+  const [draggingRowIdx, setDraggingRowIdx] = useState(null);
+  const [dragOverRowIdx, setDragOverRowIdx] = useState(null);
 
   useEffect(() => {
     fetch(`${API_URL}/api/rates`)
@@ -472,13 +474,52 @@ export default function SmetaPage() {
               </tr>
             </thead>
             <tbody>
-              {rows.map((row) => (
-                <tr key={row.id} className="hover:bg-blue-50/30">
+              {rows.map((row, rowIdx) => (
+                <tr
+                  key={row.id}
+                  onDragOver={(e) => {
+                    e.preventDefault();
+                    e.dataTransfer.dropEffect = 'move';
+                    setDragOverRowIdx(rowIdx);
+                  }}
+                  onDragLeave={() => setDragOverRowIdx(null)}
+                  onDrop={(e) => {
+                    e.preventDefault();
+                    const fromIdx = Number(e.dataTransfer.getData('text/plain'));
+                    if (fromIdx === rowIdx) return;
+                    const newRows = [...rows];
+                    const [moved] = newRows.splice(fromIdx, 1);
+                    newRows.splice(rowIdx, 0, moved);
+                    setRows(newRows);
+                    setDraggingRowIdx(null);
+                    setDragOverRowIdx(null);
+                  }}
+                  className={`hover:bg-blue-50/30 transition-all duration-200
+                    ${draggingRowIdx === rowIdx ? 'opacity-40 scale-[0.99]' : ''}
+                    ${dragOverRowIdx === rowIdx && draggingRowIdx !== rowIdx ? 'bg-blue-50 ring-2 ring-blue-200' : ''}
+                  `}
+                >
                   <td className="border border-gray-300 px-2 py-1 sticky left-0 bg-white z-10 align-top">
+                    <span
+                      draggable
+                      onDragStart={(e) => {
+                        e.dataTransfer.setData('text/plain', String(rowIdx));
+                        e.dataTransfer.effectAllowed = 'move';
+                        setDraggingRowIdx(rowIdx);
+                      }}
+                      onDragEnd={() => {
+                        setDraggingRowIdx(null);
+                        setDragOverRowIdx(null);
+                      }}
+                      className="cursor-grab text-gray-400 hover:text-gray-600 select-none pr-2 text-xs leading-none inline-block align-middle"
+                      title="Перетащить"
+                    >
+                      &#x2630;
+                    </span>
                     <AutoResizeTextarea
                       value={row.name}
                       onChange={(e) => updateRowName(row.id, e.target.value)}
-                      className="w-full px-1 py-0.5 text-xs border border-transparent hover:border-gray-300 focus:border-blue-500 rounded outline-none bg-transparent resize-none whitespace-normal break-words leading-tight"
+                      className="w-full px-1 py-0.5 text-xs border border-transparent hover:border-gray-300 focus:border-blue-500 rounded outline-none bg-transparent resize-none whitespace-normal break-words leading-tight inline-block align-middle"
                       placeholder="Название"
                     />
                   </td>
