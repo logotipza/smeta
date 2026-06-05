@@ -120,7 +120,7 @@ export default function SmetaPage() {
 
       {workTypes.length > 0 && (
         <div className="bg-white border rounded-lg overflow-x-auto overflow-y-auto max-h-[80vh] shadow-sm">
-          <table className="w-full text-xs border-collapse min-w-max table-fixed">
+          <table className="w-full text-xs border-collapse min-w-max">
             <thead>
               {/* Row 1: Work type names */}
               <tr className="bg-gray-100 sticky top-0 z-20">
@@ -192,7 +192,7 @@ export default function SmetaPage() {
             <tbody>
               {rows.map((row) => (
                 <tr key={row.id} className="hover:bg-blue-50/30">
-                  <td className="border border-gray-300 px-2 py-1 sticky left-0 bg-white z-10 align-top">
+                  <td className="border border-gray-300 px-2 py-1 sticky left-0 bg-white z-10 h-8">
                     <textarea
                       value={row.name}
                       onChange={(e) => updateRowName(row.id, e.target.value)}
@@ -206,30 +206,30 @@ export default function SmetaPage() {
                     const total = calcTotal(est.clean, est.risk, wt.globalRisk);
                     return (
                       <>
-                        <td key={`${wt.id}_c`} className="border border-gray-300 px-1 py-1 align-top">
+                        <td key={`${wt.id}_c`} className="border border-gray-300 px-1 py-1 h-8">
                           <input
                             type="number"
                             value={est.clean || ''}
                             onChange={(e) => updateEstimate(row.id, wt.id, 'clean', e.target.value)}
-                            className="w-full px-1 py-0.5 text-xs text-center border border-transparent hover:border-gray-300 focus:border-blue-500 rounded outline-none bg-transparent"
+                            className="w-full px-1 py-0.5 text-xs text-center border border-transparent hover:border-gray-300 focus:border-blue-500 rounded outline-none bg-transparent h-5"
                           />
                         </td>
-                        <td key={`${wt.id}_r`} className="border border-gray-300 px-1 py-1 align-top">
+                        <td key={`${wt.id}_r`} className="border border-gray-300 px-1 py-1 h-8">
                           <input
                             type="number"
                             step="0.1"
                             value={est.risk || ''}
                             onChange={(e) => updateEstimate(row.id, wt.id, 'risk', e.target.value)}
-                            className="w-full px-1 py-0.5 text-xs text-center border border-transparent hover:border-gray-300 focus:border-blue-500 rounded outline-none bg-transparent"
+                            className="w-full px-1 py-0.5 text-xs text-center border border-transparent hover:border-gray-300 focus:border-blue-500 rounded outline-none bg-transparent h-5"
                           />
                         </td>
-                        <td key={`${wt.id}_t`} className="border border-gray-300 px-1 py-1 text-center font-medium bg-gray-50/50 text-gray-800 text-xs align-top">
+                        <td key={`${wt.id}_t`} className="border border-gray-300 px-1 py-1 text-center font-medium bg-gray-50/50 text-gray-800 text-xs h-8">
                           {total}
                         </td>
                       </>
                     );
                   })}
-                  <td className="border border-gray-300 px-1 py-1 text-center align-top">
+                  <td className="border border-gray-300 px-1 py-1 text-center h-8">
                     <button onClick={() => removeRow(row.id)} className="text-red-400 hover:text-red-600 text-xs">✕</button>
                   </td>
                 </tr>
