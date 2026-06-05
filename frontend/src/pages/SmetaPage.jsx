@@ -6,6 +6,28 @@ function genId() {
   return Math.random().toString(36).slice(2, 9);
 }
 
+function AutoResizeTextarea({ value, onChange, placeholder, className }) {
+  const ref = useRef(null);
+
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    el.style.height = 'auto';
+    el.style.height = el.scrollHeight + 'px';
+  }, [value]);
+
+  return (
+    <textarea
+      ref={ref}
+      value={value}
+      onChange={onChange}
+      placeholder={placeholder}
+      className={className}
+      rows={1}
+    />
+  );
+}
+
 export default function SmetaPage() {
   const [rates, setRates] = useState([]);
   const [workTypes, setWorkTypes] = useState([]);
@@ -59,28 +81,6 @@ export default function SmetaPage() {
   const updateRowName = (id, name) => {
     setRows(rows.map((r) => (r.id === id ? { ...r, name } : r)));
   };
-
-  function AutoResizeTextarea({ value, onChange, placeholder, className }) {
-    const ref = useRef(null);
-
-    useEffect(() => {
-      const el = ref.current;
-      if (!el) return;
-      el.style.height = 'auto';
-      el.style.height = el.scrollHeight + 'px';
-    }, [value]);
-
-    return (
-      <textarea
-        ref={ref}
-        value={value}
-        onChange={onChange}
-        placeholder={placeholder}
-        className={className}
-        rows={1}
-      />
-    );
-  }
 
   const updateEstimate = (rowId, wtId, field, value) => {
     setRows(rows.map((r) => {
