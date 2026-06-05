@@ -1,14 +1,16 @@
 const express = require('express');
 const router = express.Router();
 const xlsxGenerator = require('../services/xlsxGenerator');
+const { workTypes, roles } = require('../data/dictionaries');
 
-// GET /api/smeta/health
 router.get('/health', (req, res) => {
   res.json({ status: 'smeta route ok' });
 });
 
-// POST /api/smeta/export
-// Body: { data: [...] }
+router.get('/dictionaries', (req, res) => {
+  res.json({ workTypes, roles });
+});
+
 router.post('/export', async (req, res) => {
   try {
     const { data, options } = req.body;
@@ -19,7 +21,7 @@ router.post('/export', async (req, res) => {
     res.send(buffer);
   } catch (err) {
     console.error('Export error:', err);
-    res.status(500).json({ error: 'Failed to generate xlsx' });
+    res.status(500).json({ error: 'Failed to generate xlsx', detail: err.message });
   }
 });
 
