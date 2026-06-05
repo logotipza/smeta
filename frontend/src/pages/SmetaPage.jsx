@@ -366,7 +366,12 @@ export default function SmetaPage() {
                       {idx > 0 && (
                         <button onClick={() => moveWorkType(idx, -1)} className="text-gray-400 hover:text-gray-600 text-[10px]">←</button>
                       )}
-                      <span className="font-bold text-gray-800 text-xs">{wt.name}</span>
+                      <input
+                        type="text"
+                        value={wt.name}
+                        onChange={(e) => updateWorkType(wt.id, { name: e.target.value })}
+                        className="font-bold text-gray-800 text-xs bg-transparent border border-transparent hover:border-gray-300 focus:border-blue-500 rounded px-1 py-0.5 text-center outline-none w-24"
+                      />
                       {idx < workTypes.length - 1 && (
                         <button onClick={() => moveWorkType(idx, 1)} className="text-gray-400 hover:text-gray-600 text-[10px]">→</button>
                       )}
