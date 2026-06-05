@@ -192,12 +192,11 @@ export default function SmetaPage() {
             <tbody>
               {rows.map((row) => (
                 <tr key={row.id} className="hover:bg-blue-50/30">
-                  <td className="border border-gray-300 px-2 py-1 sticky left-0 bg-white z-10 h-8">
+                  <td className="border border-gray-300 px-2 py-1 sticky left-0 bg-white z-10 align-top">
                     <textarea
                       value={row.name}
                       onChange={(e) => updateRowName(row.id, e.target.value)}
-                      rows={1}
-                      className="w-full px-1 py-0.5 text-xs border border-transparent hover:border-gray-300 focus:border-blue-500 rounded outline-none bg-transparent resize-none whitespace-normal break-words leading-tight h-5"
+                      className="w-full px-1 py-0.5 text-xs border border-transparent hover:border-gray-300 focus:border-blue-500 rounded outline-none bg-transparent resize-none whitespace-normal break-words leading-tight min-h-[20px]"
                       placeholder="Название"
                     />
                   </td>
@@ -206,7 +205,7 @@ export default function SmetaPage() {
                     const total = calcTotal(est.clean, est.risk, wt.globalRisk);
                     return (
                       <>
-                        <td key={`${wt.id}_c`} className="border border-gray-300 px-1 py-1 h-8">
+                        <td key={`${wt.id}_c`} className="border border-gray-300 px-1 py-1 align-top">
                           <input
                             type="number"
                             value={est.clean || ''}
@@ -214,7 +213,7 @@ export default function SmetaPage() {
                             className="w-full px-1 py-0.5 text-xs text-center border border-transparent hover:border-gray-300 focus:border-blue-500 rounded outline-none bg-transparent h-5"
                           />
                         </td>
-                        <td key={`${wt.id}_r`} className="border border-gray-300 px-1 py-1 h-8">
+                        <td key={`${wt.id}_r`} className="border border-gray-300 px-1 py-1 align-top">
                           <input
                             type="number"
                             step="0.1"
@@ -223,13 +222,13 @@ export default function SmetaPage() {
                             className="w-full px-1 py-0.5 text-xs text-center border border-transparent hover:border-gray-300 focus:border-blue-500 rounded outline-none bg-transparent h-5"
                           />
                         </td>
-                        <td key={`${wt.id}_t`} className="border border-gray-300 px-1 py-1 text-center font-medium bg-gray-50/50 text-gray-800 text-xs h-8">
-                          {total}
+                        <td key={`${wt.id}_t`} className="border border-gray-300 px-1 py-1 text-center font-medium bg-gray-50/50 text-gray-800 text-xs align-top">
+                          <div className="h-5 flex items-center justify-center">{total}</div>
                         </td>
                       </>
                     );
                   })}
-                  <td className="border border-gray-300 px-1 py-1 text-center h-8">
+                  <td className="border border-gray-300 px-1 py-1 text-center align-top">
                     <button onClick={() => removeRow(row.id)} className="text-red-400 hover:text-red-600 text-xs">✕</button>
                   </td>
                 </tr>
