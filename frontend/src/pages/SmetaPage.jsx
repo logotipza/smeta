@@ -235,14 +235,18 @@ export default function SmetaPage() {
                 </tr>
               ))}
               <tr>
-                <td colSpan={workTypes.length * 3 + 2} className="border border-gray-300 px-6 py-4 text-center">
+                <td className="border border-gray-300 px-2 py-2 sticky left-0 bg-white z-10">
                   <button
                     onClick={addRow}
-                    className="bg-white border border-gray-300 text-gray-700 px-4 py-2 rounded text-sm font-medium hover:bg-gray-50 transition"
+                    className="bg-white border border-gray-300 text-gray-700 px-3 py-1.5 rounded text-xs font-medium hover:bg-gray-50 transition"
                   >
                     + Строка
                   </button>
                 </td>
+                {workTypes.map((wt) => (
+                  <td key={`${wt.id}_empty`} colSpan={3} className="border border-gray-300" />
+                ))}
+                <td className="border border-gray-300" />
               </tr>
             </tbody>
           </table>
