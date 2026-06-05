@@ -35,6 +35,7 @@ export default function SmetaPage() {
   const [rows, setRows] = useState([]);
   const [newWorkTypeName, setNewWorkTypeName] = useState('');
   const [workTypeError, setWorkTypeError] = useState(false);
+  const [draggingWtId, setDraggingWtId] = useState(null);
 
   useEffect(() => {
     fetch(`${API_URL}/api/rates`)
@@ -361,10 +362,28 @@ export default function SmetaPage() {
               <tr className="bg-gray-100 sticky top-0 z-20">
                 <th className="border border-gray-300 px-2 py-1.5 text-left font-semibold text-gray-700 min-w-[120px] sticky left-0 bg-gray-100 z-30">Задача</th>
                 {workTypes.map((wt, idx) => (
-                  <th key={wt.id} colSpan={3} className="border border-gray-300 px-1 py-1 text-center min-w-[180px]">
+                  <th
+                    key={wt.id}
+                    colSpan={3}
+                    draggable
+                    onDragStart={() => setDraggingWtId(wt.id)}
+                    onDragOver={(e) => e.preventDefault()}
+                    onDrop={() => {
+                      if (!draggingWtId || draggingWtId === wt.id) return;
+                      const fromIndex = workTypes.findIndex((w) => w.id === draggingWtId);
+                      const toIndex = idx;
+                      const newTypes = [...workTypes];
+                      const [moved] = newTypes.splice(fromIndex, 1);
+                      newTypes.splice(toIndex, 0, moved);
+                      setWorkTypes(newTypes);
+                      setDraggingWtId(null);
+                    }}
+                    onDragEnd={() => setDraggingWtId(null)}
+                    className={`border border-gray-300 px-1 py-1 text-center min-w-[180px] cursor-grab ${draggingWtId === wt.id ? 'opacity-50' : ''}`}
+                  >
                     <div className="flex items-center justify-center gap-1">
                       {idx > 0 && (
-                        <button onClick={() => moveWorkType(idx, -1)} className="text-gray-400 hover:text-gray-600 text-[10px]">←</button>
+                        <button onClick={(e) => { e.stopPropagation(); moveWorkType(idx, -1); }} className="text-gray-400 hover:text-gray-600 text-[10px]">←</button>
                       )}
                       <input
                         type="text"
@@ -373,9 +392,9 @@ export default function SmetaPage() {
                         className="font-bold text-gray-800 text-xs bg-transparent border border-transparent hover:border-gray-300 focus:border-blue-500 rounded px-1 py-0.5 text-center outline-none w-24"
                       />
                       {idx < workTypes.length - 1 && (
-                        <button onClick={() => moveWorkType(idx, 1)} className="text-gray-400 hover:text-gray-600 text-[10px]">→</button>
+                        <button onClick={(e) => { e.stopPropagation(); moveWorkType(idx, 1); }} className="text-gray-400 hover:text-gray-600 text-[10px]">→</button>
                       )}
-                      <button onClick={() => removeWorkType(wt.id)} className="text-red-400 hover:text-red-600 text-[10px] ml-0.5">✕</button>
+                      <button onClick={(e) => { e.stopPropagation(); removeWorkType(wt.id); }} className="text-red-400 hover:text-red-600 text-[10px] ml-0.5">✕</button>
                     </div>
                   </th>
                 ))}
