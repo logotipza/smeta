@@ -118,12 +118,12 @@ export default function SmetaPage() {
       )}
 
       {workTypes.length > 0 && (
-        <div className="bg-white border rounded-lg overflow-auto shadow-sm">
-          <table className="w-full text-sm border-collapse">
+        <div className="bg-white border rounded-lg overflow-x-auto shadow-sm">
+          <table className="w-full text-xs border-collapse min-w-max">
             <thead>
               {/* Row 1: Work type names */}
               <tr className="bg-gray-100">
-                <th className="border border-gray-300 px-3 py-2 text-left font-semibold text-gray-700 w-64 sticky left-0 bg-gray-100 z-10">Задача</th>
+                <th className="border border-gray-300 px-3 py-2 text-left font-semibold text-gray-700 min-w-[140px]">Задача</th>
                 {workTypes.map((wt, idx) => (
                   <th key={wt.id} colSpan={3} className="border border-gray-300 px-2 py-2 text-center min-w-[240px]">
                     <div className="flex items-center justify-center gap-2">
@@ -142,7 +142,7 @@ export default function SmetaPage() {
               </tr>
               {/* Row 2: Specialist & global risk */}
               <tr className="bg-gray-50">
-                <td className="border border-gray-300 px-3 py-1.5 text-xs text-gray-500 sticky left-0 bg-gray-50 z-10">Специалист / Риск</td>
+                <td className="border border-gray-300 px-3 py-1.5 text-xs text-gray-500">Специалист / Риск</td>
                 {workTypes.map((wt) => (
                   <td key={wt.id} colSpan={3} className="border border-gray-300 px-2 py-1.5">
                     <div className="flex items-center justify-center gap-2">
@@ -174,7 +174,7 @@ export default function SmetaPage() {
               </tr>
               {/* Row 3: Sub-headers */}
               <tr className="bg-gray-50">
-                <td className="border border-gray-300 px-3 py-1.5 text-xs text-gray-500 font-medium sticky left-0 bg-gray-50 z-10">Название</td>
+                <td className="border border-gray-300 px-3 py-1.5 text-xs text-gray-500 font-medium">Название</td>
                 {workTypes.map((wt) => (
                   <>
                     <td key={`${wt.id}_c`} className="border border-gray-300 px-2 py-1.5 text-xs text-gray-500 text-center font-medium">Чистая</td>
@@ -188,12 +188,12 @@ export default function SmetaPage() {
             <tbody>
               {rows.map((row) => (
                 <tr key={row.id} className="hover:bg-blue-50/30">
-                  <td className="border border-gray-300 px-2 py-1.5 sticky left-0 bg-white z-10">
-                    <input
-                      type="text"
+                  <td className="border border-gray-300 px-2 py-1.5">
+                    <textarea
                       value={row.name}
                       onChange={(e) => updateRowName(row.id, e.target.value)}
-                      className="w-full px-2 py-1 text-sm border border-transparent hover:border-gray-300 focus:border-blue-500 rounded outline-none bg-transparent"
+                      rows={1}
+                      className="w-full px-2 py-1 text-xs border border-transparent hover:border-gray-300 focus:border-blue-500 rounded outline-none bg-transparent resize-none whitespace-normal break-words"
                       placeholder="Название задачи"
                     />
                   </td>
