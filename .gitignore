@@ -1,6 +1,8 @@
 # Dependencies
 node_modules/
 vendor/
+backend/node_modules/
+frontend/node_modules/
 
 # Build
 build/
