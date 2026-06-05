@@ -122,94 +122,139 @@ export default function SmetaPage() {
   const exportToXlsx = () => {
     if (workTypes.length === 0) return;
 
+    const COLS_PER_WT = 4; // Чист, Риск, Итого, Стоимость
     const wb = XLSX.utils.book_new();
     const data = [];
 
-    // Row 1: Work type names (merged later)
-    const header1 = ['Задача'];
-    workTypes.forEach((wt) => {
-      header1.push(wt.name, '', '');
-    });
-    data.push(header1);
+    // Row 1: Work type names
+    const h1 = ['Задача'];
+    workTypes.forEach((wt) => h1.push(wt.name, '', '', ''));
+    data.push(h1);
 
     // Row 2: Specialist
-    const header2 = ['Специалист'];
+    const h2 = ['Специалист'];
+    workTypes.forEach((wt) => h2.push(getSpecialistName(wt.specialistId), '', '', ''));
+    data.push(h2);
+
+    // Row 3: Rate
+    const h3 = ['Ставка'];
     workTypes.forEach((wt) => {
-      header2.push(getSpecialistName(wt.specialistId), '', '');
+      const rate = rates.find((r) => r.id === wt.specialistId)?.rate || 0;
+      h3.push(rate, '', '', '');
     });
-    data.push(header2);
+    data.push(h3);
 
-    // Row 3: Global risk
-    const header3 = ['Общий риск'];
-    workTypes.forEach((wt) => {
-      header3.push(wt.globalRisk, '', '');
-    });
-    data.push(header3);
+    // Row 4: Global risk
+    const h4 = ['Общий риск'];
+    workTypes.forEach((wt) => h4.push(wt.globalRisk, '', '', ''));
+    data.push(h4);
 
-    // Row 4: Sub-headers
-    const header4 = ['Название'];
-    workTypes.forEach(() => {
-      header4.push('Чист', 'Риск', 'Итого');
-    });
-    data.push(header4);
+    // Row 5: Sub-headers + row totals
+    const h5 = ['Название'];
+    workTypes.forEach(() => h5.push('Чист', 'Риск', 'Итого', 'Стоимость'));
+    h5.push('Всего часов', 'Всего стоимость');
+    data.push(h5);
 
-    // Data rows
+    // Data rows with placeholders for formula columns
     rows.forEach((row) => {
       const r = [row.name];
       workTypes.forEach((wt) => {
         const est = row.estimates?.[wt.id] || { clean: 0, risk: 1 };
-        r.push(est.clean || 0, est.risk || 1);
+        r.push(est.clean ?? 0, est.risk ?? 1, '', '');
       });
+      r.push('', ''); // row total placeholders
       data.push(r);
     });
 
     const ws = XLSX.utils.aoa_to_sheet(data);
 
-    // Add formulas for totals
-    const firstDataRow = 5; // 1-based Excel row number
+    const firstDataRow = 6; // 1-based
+    const rateRow = 3;
+    const globalRiskRow = 4;
+    const totalsRow = firstDataRow + rows.length;
+
+    // Pre-compute total/cost column addresses
+    const totalCols = [];
+    const costCols = [];
+    workTypes.forEach((_, wtIdx) => {
+      const colStart = 1 + wtIdx * COLS_PER_WT;
+      totalCols.push(colAddr(colStart + 2));
+      costCols.push(colAddr(colStart + 3));
+    });
+    const totalHoursCol = colAddr(1 + workTypes.length * COLS_PER_WT);
+    const totalCostCol = colAddr(2 + workTypes.length * COLS_PER_WT);
+
+    // Add formulas for each data row
     rows.forEach((_, rowIdx) => {
+      const excelRow = firstDataRow + rowIdx;
+
       workTypes.forEach((_, wtIdx) => {
-        const colStart = 1 + wtIdx * 3; // 0-based
+        const colStart = 1 + wtIdx * COLS_PER_WT;
         const cleanCol = colAddr(colStart);
         const riskCol = colAddr(colStart + 1);
-        const totalCol = colAddr(colStart + 2);
-        const globalRiskCol = colAddr(colStart); // globalRisk is in same col, row 3
-        const excelRow = firstDataRow + rowIdx;
-        const cellRef = `${totalCol}${excelRow}`;
-        const formula = `=ROUNDUP(${cleanCol}${excelRow}*${riskCol}${excelRow}*${globalRiskCol}$3,0)`;
-        ws[cellRef] = { t: 'n', f: formula, v: 0 };
+        const totalCol = totalCols[wtIdx];
+        const costCol = costCols[wtIdx];
+        const rateCol = colAddr(colStart);
+        const globalRiskCol = colAddr(colStart);
+
+        ws[`${totalCol}${excelRow}`] = {
+          t: 'n',
+          f: `=ROUNDUP(${cleanCol}${excelRow}*${riskCol}${excelRow}*${globalRiskCol}$${globalRiskRow},0)`,
+          v: 0,
+        };
+        ws[`${costCol}${excelRow}`] = {
+          t: 'n',
+          f: `=${totalCol}${excelRow}*${rateCol}$${rateRow}`,
+          v: 0,
+        };
       });
+
+      // Row totals: sum individual total/cost cells
+      ws[`${totalHoursCol}${excelRow}`] = {
+        t: 'n',
+        f: '=' + totalCols.map((c) => `${c}${excelRow}`).join('+'),
+        v: 0,
+      };
+      ws[`${totalCostCol}${excelRow}`] = {
+        t: 'n',
+        f: '=' + costCols.map((c) => `${c}${excelRow}`).join('+'),
+        v: 0,
+      };
     });
 
     // Totals row
-    const totalsRow = firstDataRow + rows.length;
-    const totalsRowData = ['ИТОГО'];
+    const t = ['ИТОГО'];
     workTypes.forEach((_, wtIdx) => {
-      const colStart = 1 + wtIdx * 3;
-      const totalCol = colAddr(colStart + 2);
-      totalsRowData.push('', '', {
-        t: 'n',
-        f: `=SUM(${totalCol}${firstDataRow}:${totalCol}${totalsRow - 1})`,
-        v: 0,
-      });
+      const totalCol = totalCols[wtIdx];
+      const costCol = costCols[wtIdx];
+      t.push('', '',
+        { t: 'n', f: `=SUM(${totalCol}${firstDataRow}:${totalCol}${totalsRow - 1})`, v: 0 },
+        { t: 'n', f: `=SUM(${costCol}${firstDataRow}:${costCol}${totalsRow - 1})`, v: 0 }
+      );
     });
-    XLSX.utils.sheet_add_aoa(ws, [totalsRowData], { origin: { r: totalsRow - 1, c: 0 } });
+    t.push(
+      { t: 'n', f: `=SUM(${totalHoursCol}${firstDataRow}:${totalHoursCol}${totalsRow - 1})`, v: 0 },
+      { t: 'n', f: `=SUM(${totalCostCol}${firstDataRow}:${totalCostCol}${totalsRow - 1})`, v: 0 }
+    );
+    XLSX.utils.sheet_add_aoa(ws, [t], { origin: { r: totalsRow - 1, c: 0 } });
 
-    // Merges for header rows
+    // Merges
     const merges = [];
     workTypes.forEach((_, wtIdx) => {
-      const colStart = 1 + wtIdx * 3;
-      merges.push({ s: { r: 0, c: colStart }, e: { r: 0, c: colStart + 2 } }); // wt name
-      merges.push({ s: { r: 1, c: colStart }, e: { r: 1, c: colStart + 2 } }); // specialist
-      merges.push({ s: { r: 2, c: colStart }, e: { r: 2, c: colStart + 2 } }); // globalRisk
+      const colStart = 1 + wtIdx * COLS_PER_WT;
+      merges.push({ s: { r: 0, c: colStart }, e: { r: 0, c: colStart + 3 } });
+      merges.push({ s: { r: 1, c: colStart }, e: { r: 1, c: colStart + 3 } });
+      merges.push({ s: { r: 2, c: colStart }, e: { r: 2, c: colStart + 3 } });
+      merges.push({ s: { r: 3, c: colStart }, e: { r: 3, c: colStart + 3 } });
     });
     ws['!merges'] = merges;
 
     // Column widths
     const cols = [{ wch: 30 }];
     workTypes.forEach(() => {
-      cols.push({ wch: 10 }, { wch: 8 }, { wch: 10 });
+      cols.push({ wch: 10 }, { wch: 8 }, { wch: 10 }, { wch: 12 });
     });
+    cols.push({ wch: 12 }, { wch: 14 });
     ws['!cols'] = cols;
 
     XLSX.utils.book_append_sheet(wb, ws, 'Смета');
