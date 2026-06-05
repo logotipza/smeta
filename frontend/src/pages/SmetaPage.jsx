@@ -76,8 +76,8 @@ export default function SmetaPage() {
   };
 
   const calcTotal = (clean, rowRisk, globalRisk) => {
-    const r = rowRisk === 0 ? 1 : rowRisk;
-    const g = globalRisk === 0 ? 1 : globalRisk;
+    const r = (!rowRisk || rowRisk === 0) ? 1 : rowRisk;
+    const g = (!globalRisk || globalRisk === 0) ? 1 : globalRisk;
     return Math.ceil((clean || 0) * r * g);
   };
 
@@ -180,7 +180,7 @@ export default function SmetaPage() {
                       />
                     </td>
                     {workTypes.map((wt) => {
-                      const est = row.estimates?.[wt.id] || { clean: 0, risk: 0 };
+                      const est = row.estimates?.[wt.id] || { clean: 0, risk: 1 };
                       const total = calcTotal(est.clean, est.risk, wt.globalRisk);
                       return (
                         <td key={wt.id} className="px-2 py-3">
@@ -196,7 +196,7 @@ export default function SmetaPage() {
                               type="number"
                               step="0.1"
                               value={est.risk}
-                              onChange={(e) => updateEstimate(row.id, wt.id, 'risk', e.target.value)}
+                              onChange={(e) => updateEstimate(row.id, wt.id, 'risk', e.target.value || '1')}
                               className="border border-gray-300 rounded px-2 py-1 text-sm text-center focus:outline-none focus:ring-1 focus:ring-blue-500"
                               placeholder="1"
                             />
