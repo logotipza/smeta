@@ -1,14 +1,30 @@
 const express = require('express');
 const router = express.Router();
 const xlsxGenerator = require('../services/xlsxGenerator');
-const { workTypes, roles } = require('../data/dictionaries');
+const { rates, getRate } = require('../data/rates');
+const { calculateTree, calculateTotals } = require('../calculator');
 
 router.get('/health', (req, res) => {
   res.json({ status: 'smeta route ok' });
 });
 
-router.get('/dictionaries', (req, res) => {
-  res.json({ workTypes, roles });
+router.get('/config', (req, res) => {
+  res.json({
+    rates: rates.map((r) => r.role),
+    rateDetails: rates,
+  });
+});
+
+router.post('/calculate', (req, res) => {
+  try {
+    const { rows, settings, workTypes } = req.body;
+    const calculated = calculateTree(rows, settings, workTypes);
+    const totals = calculateTotals(calculated, settings, workTypes);
+    res.json({ rows: calculated, totals });
+  } catch (err) {
+    console.error('Calculate error:', err);
+    res.status(500).json({ error: err.message });
+  }
 });
 
 router.post('/export', async (req, res) => {
