@@ -255,7 +255,7 @@ function App() {
               <th style={th}>Уровень</th>
               <th style={th}>Название</th>
               {workTypes.map((wt) => (
-                <th key={wt.id} style={th} colSpan={wt.type === 'input' ? 3 : 2}>
+                <th key={wt.id} style={th} colSpan={3}>
                   {wt.name}
                 </th>
               ))}
@@ -265,18 +265,11 @@ function App() {
               <th style={th}></th>
               <th style={th}></th>
               {workTypes.map((wt) => (
-                wt.type === 'input' ? (
-                  <>
-                    <th key={`${wt.id}_c`} style={thSmall}>чист.</th>
-                    <th key={`${wt.id}_r`} style={thSmall}>риск</th>
-                    <th key={`${wt.id}_t`} style={thSmall}>итого</th>
-                  </>
-                ) : (
-                  <>
-                    <th key={`${wt.id}_c`} style={thSmall}>чист.</th>
-                    <th key={`${wt.id}_t`} style={thSmall}>итого</th>
-                  </>
-                )
+                <>
+                  <th key={`${wt.id}_c`} style={thSmall}>чист.</th>
+                  <th key={`${wt.id}_r`} style={thSmall}>риск</th>
+                  <th key={`${wt.id}_t`} style={thSmall}>итого</th>
+                </>
               ))}
               <th style={th}></th>
             </tr>
@@ -320,6 +313,13 @@ function App() {
                         <>
                           <td key={`${wt.id}_c`} style={{ ...td, background: '#f8f8f8' }}>
                             {calc.clean.toLocaleString('ru-RU', { maximumFractionDigits: 0 })}
+                          </td>
+                          <td key={`${wt.id}_r`} style={{ ...td, background: '#f8f8f8' }}>
+                            {isTask ? (
+                              <input type="number" step="0.1" value={est.riskCoeff || 0} onChange={(e) => updateEstimate(row.id, wt.id, { riskCoeff: Number(e.target.value) })} style={{ ...inputSmall, width: 45 }} />
+                            ) : (
+                              <span>—</span>
+                            )}
                           </td>
                           <td key={`${wt.id}_t`} style={{ ...td, fontWeight: 'bold', background: '#f8f8f8' }}>
                             {calc.total.toLocaleString('ru-RU', { maximumFractionDigits: 0 })}
