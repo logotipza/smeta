@@ -238,9 +238,10 @@ export default function SmetaPage() {
                 <td className="border border-gray-300 px-2 py-2 sticky left-0 bg-white z-10">
                   <button
                     onClick={addRow}
-                    className="bg-white border border-gray-300 text-gray-700 px-3 py-1.5 rounded text-xs font-medium hover:bg-gray-50 transition"
+                    className="bg-blue-600 text-white w-7 h-7 rounded flex items-center justify-center text-sm font-bold hover:bg-blue-700 transition shadow-sm"
+                    title="Добавить строку"
                   >
-                    + Строка
+                    +
                   </button>
                 </td>
                 {workTypes.map((wt) => (
