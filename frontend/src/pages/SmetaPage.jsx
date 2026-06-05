@@ -35,7 +35,8 @@ export default function SmetaPage() {
   const [rows, setRows] = useState([]);
   const [newWorkTypeName, setNewWorkTypeName] = useState('');
   const [workTypeError, setWorkTypeError] = useState(false);
-  const [draggingWtId, setDraggingWtId] = useState(null);
+  const [draggingIdx, setDraggingIdx] = useState(null);
+  const [dragOverIdx, setDragOverIdx] = useState(null);
 
   useEffect(() => {
     fetch(`${API_URL}/api/rates`)
@@ -365,25 +366,47 @@ export default function SmetaPage() {
                   <th
                     key={wt.id}
                     colSpan={3}
-                    draggable
-                    onDragStart={() => setDraggingWtId(wt.id)}
-                    onDragOver={(e) => e.preventDefault()}
-                    onDrop={() => {
-                      if (!draggingWtId || draggingWtId === wt.id) return;
-                      const fromIndex = workTypes.findIndex((w) => w.id === draggingWtId);
-                      const toIndex = idx;
-                      const newTypes = [...workTypes];
-                      const [moved] = newTypes.splice(fromIndex, 1);
-                      newTypes.splice(toIndex, 0, moved);
-                      setWorkTypes(newTypes);
-                      setDraggingWtId(null);
+                    onDragOver={(e) => {
+                      e.preventDefault();
+                      e.dataTransfer.dropEffect = 'move';
+                      setDragOverIdx(idx);
                     }}
-                    onDragEnd={() => setDraggingWtId(null)}
-                    className={`border border-gray-300 px-1 py-1 text-center min-w-[180px] cursor-grab ${draggingWtId === wt.id ? 'opacity-50' : ''}`}
+                    onDragLeave={() => setDragOverIdx(null)}
+                    onDrop={(e) => {
+                      e.preventDefault();
+                      const fromIdx = Number(e.dataTransfer.getData('text/plain'));
+                      if (fromIdx === idx) return;
+                      const newTypes = [...workTypes];
+                      const [moved] = newTypes.splice(fromIdx, 1);
+                      newTypes.splice(idx, 0, moved);
+                      setWorkTypes(newTypes);
+                      setDraggingIdx(null);
+                      setDragOverIdx(null);
+                    }}
+                    className={`border border-gray-300 px-1 py-1 text-center min-w-[180px] transition-all duration-200
+                      ${draggingIdx === idx ? 'opacity-40 scale-95' : ''}
+                      ${dragOverIdx === idx && draggingIdx !== idx ? 'bg-blue-50 border-blue-400 ring-2 ring-blue-200' : ''}
+                    `}
                   >
                     <div className="flex items-center justify-center gap-1">
+                      <span
+                        draggable
+                        onDragStart={(e) => {
+                          e.dataTransfer.setData('text/plain', String(idx));
+                          e.dataTransfer.effectAllowed = 'move';
+                          setDraggingIdx(idx);
+                        }}
+                        onDragEnd={() => {
+                          setDraggingIdx(null);
+                          setDragOverIdx(null);
+                        }}
+                        className="cursor-grab text-gray-400 hover:text-gray-600 select-none px-1 text-xs leading-none"
+                        title="Перетащить"
+                      >
+                        &#x2630;
+                      </span>
                       {idx > 0 && (
-                        <button onClick={(e) => { e.stopPropagation(); moveWorkType(idx, -1); }} className="text-gray-400 hover:text-gray-600 text-[10px]">←</button>
+                        <button onClick={() => moveWorkType(idx, -1)} className="text-gray-400 hover:text-gray-600 text-[10px]">←</button>
                       )}
                       <input
                         type="text"
@@ -392,9 +415,9 @@ export default function SmetaPage() {
                         className="font-bold text-gray-800 text-xs bg-transparent border border-transparent hover:border-gray-300 focus:border-blue-500 rounded px-1 py-0.5 text-center outline-none w-24"
                       />
                       {idx < workTypes.length - 1 && (
-                        <button onClick={(e) => { e.stopPropagation(); moveWorkType(idx, 1); }} className="text-gray-400 hover:text-gray-600 text-[10px]">→</button>
+                        <button onClick={() => moveWorkType(idx, 1)} className="text-gray-400 hover:text-gray-600 text-[10px]">→</button>
                       )}
-                      <button onClick={(e) => { e.stopPropagation(); removeWorkType(wt.id); }} className="text-red-400 hover:text-red-600 text-[10px] ml-0.5">✕</button>
+                      <button onClick={() => removeWorkType(wt.id)} className="text-red-400 hover:text-red-600 text-[10px] ml-0.5">✕</button>
                     </div>
                   </th>
                 ))}
