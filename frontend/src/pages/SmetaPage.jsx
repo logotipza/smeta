@@ -7,6 +7,56 @@ function genId() {
   return Math.random().toString(36).slice(2, 9);
 }
 
+function getSubtreeIds(rows, rootId) {
+  const result = [rootId];
+  let i = 0;
+  while (i < result.length) {
+    const currentId = result[i];
+    const children = rows.filter((r) => r.parentId === currentId);
+    for (const child of children) {
+      result.push(child.id);
+    }
+    i++;
+  }
+  return result;
+}
+
+function getLevel(rows, row) {
+  let level = 0;
+  let parentId = row.parentId;
+  while (parentId) {
+    level++;
+    const parent = rows.find((r) => r.id === parentId);
+    parentId = parent?.parentId || null;
+  }
+  return level;
+}
+
+function getVisibleRows(rows) {
+  const result = [];
+  for (const row of rows) {
+    if (row.parentId) {
+      let parentId = row.parentId;
+      let visible = true;
+      while (parentId) {
+        const parent = rows.find((r) => r.id === parentId);
+        if (!parent || !parent.isExpanded) {
+          visible = false;
+          break;
+        }
+        parentId = parent.parentId;
+      }
+      if (!visible) continue;
+    }
+    result.push(row);
+  }
+  return result;
+}
+
+function hasChildren(rows, rowId) {
+  return rows.some((r) => r.parentId === rowId);
+}
+
 function AutoResizeTextarea({ value, onChange, placeholder, className }) {
   const ref = useRef(null);
 
@@ -37,8 +87,7 @@ export default function SmetaPage() {
   const [workTypeError, setWorkTypeError] = useState(false);
   const [draggingIdx, setDraggingIdx] = useState(null);
   const [dragOverIdx, setDragOverIdx] = useState(null);
-  const [draggingRowIdx, setDraggingRowIdx] = useState(null);
-  const [dragOverRowIdx, setDragOverRowIdx] = useState(null);
+
 
   useEffect(() => {
     fetch(`${API_URL}/api/rates`)
@@ -80,7 +129,52 @@ export default function SmetaPage() {
   };
 
   const addRow = () => {
-    setRows([...rows, { id: genId(), name: '', estimates: {} }]);
+    setRows([...rows, { id: genId(), name: '', parentId: null, isExpanded: true, estimates: {} }]);
+  };
+
+  const addChildRow = (parentId) => {
+    const subtreeIds = getSubtreeIds(rows, parentId);
+    const lastDescendantId = subtreeIds[subtreeIds.length - 1];
+    const insertIdx = rows.findIndex((r) => r.id === lastDescendantId) + 1;
+    const newRow = { id: genId(), name: '', parentId, isExpanded: true, estimates: {} };
+    const newRows = [...rows];
+    newRows.splice(insertIdx, 0, newRow);
+    const parentIdx = newRows.findIndex((r) => r.id === parentId);
+    if (parentIdx !== -1) newRows[parentIdx] = { ...newRows[parentIdx], isExpanded: true };
+    setRows(newRows);
+  };
+
+  const indentRow = (rowId) => {
+    const idx = rows.findIndex((r) => r.id === rowId);
+    if (idx <= 0) return;
+    const prevRow = rows[idx - 1];
+    if (getSubtreeIds(rows, rowId).includes(prevRow.id)) return;
+    const subtreeIds = getSubtreeIds(rows, rowId);
+    const subtree = rows.filter((r) => subtreeIds.includes(r.id));
+    const remaining = rows.filter((r) => !subtreeIds.includes(r.id));
+    const insertIdx = remaining.findIndex((r) => r.id === prevRow.id) + 1;
+    const newRows = [...remaining.slice(0, insertIdx), ...subtree, ...remaining.slice(insertIdx)];
+    const updatedRows = newRows.map((r) => (r.id === rowId ? { ...r, parentId: prevRow.id } : r));
+    setRows(updatedRows);
+  };
+
+  const outdentRow = (rowId) => {
+    const row = rows.find((r) => r.id === rowId);
+    if (!row.parentId) return;
+    const parent = rows.find((r) => r.id === row.parentId);
+    const newParentId = parent?.parentId || null;
+    const subtreeIds = getSubtreeIds(rows, rowId);
+    const subtree = rows.filter((r) => subtreeIds.includes(r.id));
+    const remaining = rows.filter((r) => !subtreeIds.includes(r.id));
+    const parentSubtreeIds = getSubtreeIds(remaining, parent.id);
+    const insertIdx = remaining.findIndex((r) => r.id === parentSubtreeIds[parentSubtreeIds.length - 1]) + 1;
+    const newRows = [...remaining.slice(0, insertIdx), ...subtree, ...remaining.slice(insertIdx)];
+    const updatedRows = newRows.map((r) => (r.id === rowId ? { ...r, parentId: newParentId } : r));
+    setRows(updatedRows);
+  };
+
+  const toggleExpand = (rowId) => {
+    setRows(rows.map((r) => (r.id === rowId ? { ...r, isExpanded: !r.isExpanded } : r)));
   };
 
   const updateRowName = (id, name) => {
@@ -88,6 +182,7 @@ export default function SmetaPage() {
   };
 
   const updateEstimate = (rowId, wtId, field, value) => {
+    if (hasChildren(rows, rowId)) return;
     setRows(rows.map((r) => {
       if (r.id !== rowId) return r;
       const current = r.estimates?.[wtId] || { clean: 0, risk: 1 };
@@ -102,13 +197,31 @@ export default function SmetaPage() {
   };
 
   const removeRow = (id) => {
-    setRows(rows.filter((r) => r.id !== id));
+    const subtreeIds = getSubtreeIds(rows, id);
+    setRows(rows.filter((r) => !subtreeIds.includes(r.id)));
   };
 
   const calcTotal = (clean, rowRisk, globalRisk) => {
     const r = (!rowRisk || rowRisk === 0) ? 1 : rowRisk;
     const g = (!globalRisk || globalRisk === 0) ? 1 : globalRisk;
     return Math.ceil((clean || 0) * r * g);
+  };
+
+  const calcCellClean = (row, wt) => {
+    if (hasChildren(rows, row.id)) {
+      const children = rows.filter((r) => r.parentId === row.id);
+      return children.reduce((sum, child) => sum + calcCellClean(child, wt), 0);
+    }
+    return row.estimates?.[wt.id]?.clean || 0;
+  };
+
+  const calcCellTotal = (row, wt) => {
+    if (hasChildren(rows, row.id)) {
+      const children = rows.filter((r) => r.parentId === row.id);
+      return children.reduce((sum, child) => sum + calcCellTotal(child, wt), 0);
+    }
+    const est = row.estimates?.[wt.id] || { clean: 0, risk: 1 };
+    return calcTotal(est.clean, est.risk, wt.globalRisk);
   };
 
   const getSpecialistName = (id) => rates.find((r) => r.id === id)?.role || '—';
@@ -159,12 +272,18 @@ export default function SmetaPage() {
     h5.push('Всего часов');
     data.push(h5);
 
+    const visibleRows = getVisibleRows(rows);
+
     // Data rows with placeholders for formula columns
-    rows.forEach((row) => {
-      const r = [row.name];
+    visibleRows.forEach((row) => {
+      const level = getLevel(rows, row);
+      const indent = '  '.repeat(level);
+      const r = [indent + row.name];
       workTypes.forEach((wt) => {
-        const est = row.estimates?.[wt.id] || { clean: 0, risk: 1 };
-        r.push(est.clean ?? 0, est.risk ?? 1, '');
+        const isParent = hasChildren(rows, row.id);
+        const clean = calcCellClean(row, wt);
+        const risk = isParent ? '' : (row.estimates?.[wt.id]?.risk ?? 1);
+        r.push(clean, risk, '');
       });
       r.push(''); // row total placeholder
       data.push(r);
@@ -175,7 +294,7 @@ export default function SmetaPage() {
     const firstDataRow = 6; // 1-based
     const rateRow = 3;
     const globalRiskRow = 4;
-    const totalsRow = firstDataRow + rows.length;
+    const totalsRow = firstDataRow + visibleRows.length;
     const costRow = totalsRow + 1;
 
     const totalCols = [];
@@ -186,7 +305,7 @@ export default function SmetaPage() {
     const rowTotalCol = colAddr(1 + workTypes.length * COLS_PER_WT);
 
     // Add formulas for data rows
-    rows.forEach((_, rowIdx) => {
+    visibleRows.forEach((_, rowIdx) => {
       const excelRow = firstDataRow + rowIdx;
       workTypes.forEach((_, wtIdx) => {
         const colStart = 1 + wtIdx * COLS_PER_WT;
@@ -332,7 +451,7 @@ export default function SmetaPage() {
           <div className="flex flex-col">
             <span className="text-[10px] text-gray-500 uppercase tracking-wider">Всего часов</span>
             <span className="text-xl font-bold text-gray-800">
-              {rows.reduce((sum, row) => {
+              {rows.filter((r) => !hasChildren(rows, r.id)).reduce((sum, row) => {
                 return sum + workTypes.reduce((wtSum, wt) => {
                   const est = row.estimates?.[wt.id] || { clean: 0, risk: 1 };
                   return wtSum + calcTotal(est.clean, est.risk, wt.globalRisk);
@@ -344,7 +463,7 @@ export default function SmetaPage() {
           <div className="flex flex-col">
             <span className="text-[10px] text-gray-500 uppercase tracking-wider">Общая стоимость</span>
             <span className="text-xl font-bold text-green-700">
-              {rows.reduce((sum, row) => {
+              {rows.filter((r) => !hasChildren(rows, r.id)).reduce((sum, row) => {
                 return sum + workTypes.reduce((wtSum, wt) => {
                   const est = row.estimates?.[wt.id] || { clean: 0, risk: 1 };
                   const hours = calcTotal(est.clean, est.risk, wt.globalRisk);
@@ -474,90 +593,82 @@ export default function SmetaPage() {
               </tr>
             </thead>
             <tbody>
-              {rows.map((row, rowIdx) => (
-                <tr
-                  key={row.id}
-                  onDragOver={(e) => {
-                    e.preventDefault();
-                    e.dataTransfer.dropEffect = 'move';
-                    setDragOverRowIdx(rowIdx);
-                  }}
-                  onDragLeave={() => setDragOverRowIdx(null)}
-                  onDrop={(e) => {
-                    e.preventDefault();
-                    const fromIdx = Number(e.dataTransfer.getData('text/plain'));
-                    if (fromIdx === rowIdx) return;
-                    const newRows = [...rows];
-                    const [moved] = newRows.splice(fromIdx, 1);
-                    newRows.splice(rowIdx, 0, moved);
-                    setRows(newRows);
-                    setDraggingRowIdx(null);
-                    setDragOverRowIdx(null);
-                  }}
-                  className={`hover:bg-blue-50/30 transition-all duration-200
-                    ${draggingRowIdx === rowIdx ? 'opacity-40 scale-[0.99]' : ''}
-                    ${dragOverRowIdx === rowIdx && draggingRowIdx !== rowIdx ? 'bg-blue-50 ring-2 ring-blue-200' : ''}
-                  `}
-                >
-                  <td className="border border-gray-300 px-2 py-1 sticky left-0 bg-white z-10 align-top drop-shadow-[2px_0_4px_rgba(0,0,0,0.15)] ">
-                    <div className="flex items-start gap-1">
-                      <span
-                        draggable
-                        onDragStart={(e) => {
-                          e.dataTransfer.setData('text/plain', String(rowIdx));
-                          e.dataTransfer.effectAllowed = 'move';
-                          setDraggingRowIdx(rowIdx);
-                        }}
-                        onDragEnd={() => {
-                          setDraggingRowIdx(null);
-                          setDragOverRowIdx(null);
-                        }}
-                        className="cursor-grab text-gray-400 hover:text-gray-600 select-none text-xs leading-none mt-1"
-                        title="Перетащить"
-                      >
-                        &#x2630;
-                      </span>
-                      <AutoResizeTextarea
-                        value={row.name}
-                        onChange={(e) => updateRowName(row.id, e.target.value)}
-                        className="flex-1 px-1 py-0.5 text-xs border border-transparent hover:border-gray-300 focus:border-blue-500 rounded outline-none bg-transparent resize-none whitespace-normal break-words leading-tight"
-                        placeholder="Название"
-                      />
-                    </div>
-                  </td>
-                  {workTypes.map((wt) => {
-                    const est = row.estimates?.[wt.id] || { clean: 0, risk: 1 };
-                    const total = calcTotal(est.clean, est.risk, wt.globalRisk);
-                    return (
-                      <>
-                        <td key={`${wt.id}_c`} className="border border-gray-300 px-1 py-1 align-top">
-                          <input
-                            type="number"
-                            value={est.clean || ''}
-                            onChange={(e) => updateEstimate(row.id, wt.id, 'clean', e.target.value)}
-                            className="w-full px-1 py-0.5 text-xs text-center border border-transparent hover:border-gray-300 focus:border-blue-500 rounded outline-none bg-transparent h-5"
+              {getVisibleRows(rows).map((row) => {
+                const level = getLevel(rows, row);
+                const isParent = hasChildren(rows, row.id);
+                return (
+                  <tr key={row.id} className="hover:bg-blue-50/30">
+                    <td className="border border-gray-300 px-2 py-1 sticky left-0 bg-white z-10 align-top drop-shadow-[2px_0_4px_rgba(0,0,0,0.15)] ">
+                      <div className="flex items-start gap-1">
+                        <span className="text-gray-300 select-none text-xs leading-none mt-1">&#x2630;</span>
+                        {isParent ? (
+                          <button
+                            onClick={() => toggleExpand(row.id)}
+                            className="text-gray-500 hover:text-gray-700 text-xs mt-0.5 w-3 text-left"
+                          >
+                            {row.isExpanded ? '▼' : '▶'}
+                          </button>
+                        ) : (
+                          <span className="w-3" />
+                        )}
+                        <div className="flex-1" style={{ paddingLeft: level * 12 }}>
+                          <AutoResizeTextarea
+                            value={row.name}
+                            onChange={(e) => updateRowName(row.id, e.target.value)}
+                            className="w-full px-1 py-0.5 text-xs border border-transparent hover:border-gray-300 focus:border-blue-500 rounded outline-none bg-transparent resize-none whitespace-normal break-words leading-tight"
+                            placeholder="Название"
                           />
-                        </td>
-                        <td key={`${wt.id}_r`} className="border border-gray-300 px-1 py-1 align-top">
-                          <input
-                            type="number"
-                            step="0.1"
-                            value={est.risk || ''}
-                            onChange={(e) => updateEstimate(row.id, wt.id, 'risk', e.target.value)}
-                            className="w-full px-1 py-0.5 text-xs text-center border border-transparent hover:border-gray-300 focus:border-blue-500 rounded outline-none bg-transparent h-5"
-                          />
-                        </td>
-                        <td key={`${wt.id}_t`} className="border border-gray-300 px-1 py-1 text-center font-medium bg-gray-50/50 text-gray-800 text-xs align-top">
-                          <div className="h-5 flex items-center justify-center">{total}</div>
-                        </td>
-                      </>
-                    );
-                  })}
-                  <td className="border border-gray-300 px-1 py-1 text-center align-top">
-                    <button onClick={() => removeRow(row.id)} className="text-red-400 hover:text-red-600 text-xs">✕</button>
-                  </td>
-                </tr>
-              ))}
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-2 mt-1 pl-7">
+                        <button onClick={() => indentRow(row.id)} className="text-[10px] text-gray-400 hover:text-gray-600" title="Вложить">→</button>
+                        <button onClick={() => outdentRow(row.id)} className="text-[10px] text-gray-400 hover:text-gray-600" title="Поднять">←</button>
+                        <button onClick={() => addChildRow(row.id)} className="text-[10px] text-blue-400 hover:text-blue-600" title="Добавить подзадачу">+подзадача</button>
+                      </div>
+                    </td>
+                    {workTypes.map((wt) => {
+                      const clean = calcCellClean(row, wt);
+                      const total = calcCellTotal(row, wt);
+                      const est = row.estimates?.[wt.id] || { clean: 0, risk: 1 };
+                      return (
+                        <>
+                          <td key={`${wt.id}_c`} className="border border-gray-300 px-1 py-1 align-top">
+                            {isParent ? (
+                              <div className="h-5 flex items-center justify-center text-xs text-gray-600 font-medium">{clean || ''}</div>
+                            ) : (
+                              <input
+                                type="number"
+                                value={est.clean || ''}
+                                onChange={(e) => updateEstimate(row.id, wt.id, 'clean', e.target.value)}
+                                className="w-full px-1 py-0.5 text-xs text-center border border-transparent hover:border-gray-300 focus:border-blue-500 rounded outline-none bg-transparent h-5"
+                              />
+                            )}
+                          </td>
+                          <td key={`${wt.id}_r`} className="border border-gray-300 px-1 py-1 align-top">
+                            {isParent ? (
+                              <div className="h-5 flex items-center justify-center text-xs text-gray-400">—</div>
+                            ) : (
+                              <input
+                                type="number"
+                                step="0.1"
+                                value={est.risk || ''}
+                                onChange={(e) => updateEstimate(row.id, wt.id, 'risk', e.target.value)}
+                                className="w-full px-1 py-0.5 text-xs text-center border border-transparent hover:border-gray-300 focus:border-blue-500 rounded outline-none bg-transparent h-5"
+                              />
+                            )}
+                          </td>
+                          <td key={`${wt.id}_t`} className="border border-gray-300 px-1 py-1 text-center font-medium bg-gray-50/50 text-gray-800 text-xs align-top">
+                            <div className="h-5 flex items-center justify-center">{total}</div>
+                          </td>
+                        </>
+                      );
+                    })}
+                    <td className="border border-gray-300 px-1 py-1 text-center align-top">
+                      <button onClick={() => removeRow(row.id)} className="text-red-400 hover:text-red-600 text-xs">✕</button>
+                    </td>
+                  </tr>
+                );
+              })}
               <tr>
                 <td className="border border-gray-300 px-2 py-2 sticky left-0 bg-white z-10">
                   <button
