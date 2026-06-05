@@ -5,14 +5,20 @@ const path = require('path');
 
 const RATES_FILE = path.join(__dirname, '../data/rates.json');
 
+const defaultRates = [
+  { id: '1', role: 'Аналитик', rate: 1900 },
+  { id: '2', role: 'Дизайнер', rate: 1800 },
+  { id: '3', role: 'Разработчик', rate: 2500 },
+  { id: '4', role: 'Тестировщик', rate: 1500 },
+];
+
 function loadRates() {
   try {
-    const raw = fs.readFileSync(RATES_FILE, 'utf8');
-    return JSON.parse(raw);
-  } catch {
-    // Если файла нет — используем дефолтные
-    return require('../data/rates').rates;
-  }
+    if (fs.existsSync(RATES_FILE)) {
+      return JSON.parse(fs.readFileSync(RATES_FILE, 'utf8'));
+    }
+  } catch { /* ignore */ }
+  return [...defaultRates];
 }
 
 function saveRates(rates) {
@@ -21,39 +27,33 @@ function saveRates(rates) {
 
 let rates = loadRates();
 
-router.get('/', (req, res) => {
-  res.json(rates);
-});
+function genId() {
+  return Date.now().toString(36) + Math.random().toString(36).slice(2, 5);
+}
+
+router.get('/', (req, res) => res.json(rates));
 
 router.post('/', (req, res) => {
-  const { role, partner, own } = req.body;
-  if (!role || rates.find((r) => r.role === role)) {
-    return res.status(400).json({ error: 'Role name required or already exists' });
-  }
-  const newRate = { role, partner: Number(partner) || 0, own: Number(own) || 0 };
-  rates.push(newRate);
+  const { role, rate } = req.body;
+  if (!role || !rate) return res.status(400).json({ error: 'role and rate required' });
+  const item = { id: genId(), role: role.trim(), rate: Number(rate) };
+  rates.push(item);
   saveRates(rates);
-  res.json(newRate);
+  res.json(item);
 });
 
-router.put('/:role', (req, res) => {
-  const roleName = decodeURIComponent(req.params.role);
-  const idx = rates.findIndex((r) => r.role === roleName);
-  if (idx === -1) return res.status(404).json({ error: 'Role not found' });
-  const { role, partner, own } = req.body;
-  rates[idx] = {
-    role: role || roleName,
-    partner: Number(partner) || 0,
-    own: Number(own) || 0,
-  };
+router.put('/:id', (req, res) => {
+  const idx = rates.findIndex((r) => r.id === req.params.id);
+  if (idx === -1) return res.status(404).json({ error: 'not found' });
+  const { role, rate } = req.body;
+  rates[idx] = { ...rates[idx], role: role?.trim() || rates[idx].role, rate: Number(rate) || rates[idx].rate };
   saveRates(rates);
   res.json(rates[idx]);
 });
 
-router.delete('/:role', (req, res) => {
-  const roleName = decodeURIComponent(req.params.role);
-  const idx = rates.findIndex((r) => r.role === roleName);
-  if (idx === -1) return res.status(404).json({ error: 'Role not found' });
+router.delete('/:id', (req, res) => {
+  const idx = rates.findIndex((r) => r.id === req.params.id);
+  if (idx === -1) return res.status(404).json({ error: 'not found' });
   rates.splice(idx, 1);
   saveRates(rates);
   res.json({ success: true });
