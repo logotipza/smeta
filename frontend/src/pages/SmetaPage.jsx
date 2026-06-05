@@ -22,10 +22,7 @@ export default function SmetaPage() {
   const addWorkType = () => {
     const name = newWorkTypeName.trim();
     if (!name) return;
-    setWorkTypes([
-      ...workTypes,
-      { id: genId(), name, specialistId: '', globalRisk: 1 },
-    ]);
+    setWorkTypes([...workTypes, { id: genId(), name, specialistId: '', globalRisk: 1 }]);
     setNewWorkTypeName('');
   };
 
@@ -65,7 +62,7 @@ export default function SmetaPage() {
         ...r,
         estimates: {
           ...r.estimates,
-          [wtId]: { ...r.estimates?.[wtId], [field]: Number(value) || 0 },
+          [wtId]: { ...r.estimates?.[wtId], [field]: Number(value) || (field === 'risk' ? 1 : 0) },
         },
       };
     }));
@@ -81,162 +78,163 @@ export default function SmetaPage() {
     return Math.ceil((clean || 0) * r * g);
   };
 
+  const getSpecialistName = (id) => rates.find((r) => r.id === id)?.role || '—';
+
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <h2 className="text-2xl font-bold text-gray-900">Смета</h2>
+    <div className="space-y-4">
+      {/* Toolbar */}
+      <div className="flex items-center gap-3 bg-white border rounded-lg px-4 py-3 shadow-sm">
+        <input
+          type="text"
+          value={newWorkTypeName}
+          onChange={(e) => setNewWorkTypeName(e.target.value)}
+          onKeyDown={(e) => e.key === 'Enter' && addWorkType()}
+          className="border border-gray-300 rounded px-3 py-1.5 text-sm w-56 focus:outline-none focus:ring-2 focus:ring-blue-500"
+          placeholder="Новый вид работы..."
+        />
+        <button
+          onClick={addWorkType}
+          className="bg-blue-600 text-white px-3 py-1.5 rounded text-sm font-medium hover:bg-blue-700 transition"
+        >
+          + Вид работы
+        </button>
+        <div className="w-px h-6 bg-gray-300 mx-1" />
+        <button
+          onClick={addRow}
+          className="bg-white border border-gray-300 text-gray-700 px-3 py-1.5 rounded text-sm font-medium hover:bg-gray-50 transition"
+        >
+          + Строка
+        </button>
       </div>
 
-      {/* Добавление вида работы */}
-      <div className="bg-white shadow rounded-lg p-6">
-        <h3 className="text-lg font-medium text-gray-900 mb-4">Добавить вид работы</h3>
-        <div className="flex gap-4 items-end">
-          <div className="flex-1">
-            <label className="block text-sm font-medium text-gray-700 mb-1">Название вида работы</label>
-            <input
-              type="text"
-              value={newWorkTypeName}
-              onChange={(e) => setNewWorkTypeName(e.target.value)}
-              onKeyDown={(e) => e.key === 'Enter' && addWorkType()}
-              className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-              placeholder="например, Аналитика"
-            />
-          </div>
-          <button
-            onClick={addWorkType}
-            className="bg-blue-600 text-white px-4 py-2 rounded-md text-sm font-medium hover:bg-blue-700 transition"
-          >
-            Добавить
-          </button>
-        </div>
-      </div>
-
-      {/* Таблица сметы */}
-      {workTypes.length > 0 && (
-        <div className="bg-white shadow rounded-lg overflow-hidden">
-          <div className="overflow-x-auto">
-            <table className="min-w-full divide-y divide-gray-200">
-              <thead className="bg-gray-50">
-                <tr>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider sticky left-0 bg-gray-50 z-10 min-w-[200px]">
-                    Задача
-                  </th>
-                  {workTypes.map((wt, idx) => (
-                    <th key={wt.id} className="px-2 py-3 text-center min-w-[280px]">
-                      <div className="space-y-2">
-                        <div className="flex items-center justify-center gap-2">
-                          {idx > 0 && (
-                            <button onClick={() => moveWorkType(idx, -1)} className="text-gray-400 hover:text-gray-600">←</button>
-                          )}
-                          <span className="text-sm font-bold text-gray-900">{wt.name}</span>
-                          {idx < workTypes.length - 1 && (
-                            <button onClick={() => moveWorkType(idx, 1)} className="text-gray-400 hover:text-gray-600">→</button>
-                          )}
-                          <button onClick={() => removeWorkType(wt.id)} className="text-red-400 hover:text-red-600 ml-1 text-xs">✕</button>
-                        </div>
-                        <div className="flex items-center justify-center gap-2">
-                          <select
-                            value={wt.specialistId}
-                            onChange={(e) => updateWorkType(wt.id, { specialistId: e.target.value })}
-                            className="text-xs border border-gray-300 rounded px-2 py-1"
-                          >
-                            <option value="">— Специалист —</option>
-                            {rates.map((r) => (
-                              <option key={r.id} value={r.id}>{r.role} ({r.rate}₽/ч)</option>
-                            ))}
-                          </select>
-                          <div className="flex items-center gap-1">
-                            <span className="text-xs text-gray-500">Риск:</span>
-                            <input
-                              type="number"
-                              step="0.1"
-                              value={wt.globalRisk}
-                              onChange={(e) => updateWorkType(wt.id, { globalRisk: Number(e.target.value) || 1 })}
-                              className="w-14 text-xs border border-gray-300 rounded px-1 py-1 text-center"
-                            />
-                          </div>
-                        </div>
-                        <div className="grid grid-cols-3 gap-1 text-xs text-gray-500 uppercase">
-                          <span>Чистая</span>
-                          <span>Риск</span>
-                          <span>Итого</span>
-                        </div>
-                      </div>
-                    </th>
-                  ))}
-                  <th className="px-4 py-3 text-center w-20"></th>
-                </tr>
-              </thead>
-              <tbody className="bg-white divide-y divide-gray-200">
-                {rows.map((row) => (
-                  <tr key={row.id}>
-                    <td className="px-4 py-3 sticky left-0 bg-white z-10">
-                      <input
-                        type="text"
-                        value={row.name}
-                        onChange={(e) => updateRowName(row.id, e.target.value)}
-                        className="w-full border border-gray-300 rounded-md px-2 py-1 text-sm focus:outline-none focus:ring-1 focus:ring-blue-500"
-                        placeholder="Название задачи"
-                      />
-                    </td>
-                    {workTypes.map((wt) => {
-                      const est = row.estimates?.[wt.id] || { clean: 0, risk: 1 };
-                      const total = calcTotal(est.clean, est.risk, wt.globalRisk);
-                      return (
-                        <td key={wt.id} className="px-2 py-3">
-                          <div className="grid grid-cols-3 gap-1">
-                            <input
-                              type="number"
-                              value={est.clean}
-                              onChange={(e) => updateEstimate(row.id, wt.id, 'clean', e.target.value)}
-                              className="border border-gray-300 rounded px-2 py-1 text-sm text-center focus:outline-none focus:ring-1 focus:ring-blue-500"
-                              placeholder="0"
-                            />
-                            <input
-                              type="number"
-                              step="0.1"
-                              value={est.risk}
-                              onChange={(e) => updateEstimate(row.id, wt.id, 'risk', e.target.value || '1')}
-                              className="border border-gray-300 rounded px-2 py-1 text-sm text-center focus:outline-none focus:ring-1 focus:ring-blue-500"
-                              placeholder="1"
-                            />
-                            <div className="flex items-center justify-center bg-gray-100 rounded text-sm font-medium text-gray-900">
-                              {total}
-                            </div>
-                          </div>
-                        </td>
-                      );
-                    })}
-                    <td className="px-4 py-3 text-center">
-                      <button onClick={() => removeRow(row.id)} className="text-red-500 hover:text-red-700 text-sm">✕</button>
-                    </td>
-                  </tr>
-                ))}
-                {rows.length === 0 && (
-                  <tr>
-                    <td colSpan={workTypes.length + 2} className="px-6 py-8 text-center text-gray-500 text-sm">
-                      Нет строк. Нажмите «Добавить строку» ниже.
-                    </td>
-                  </tr>
-                )}
-              </tbody>
-            </table>
-          </div>
-          <div className="px-6 py-4 bg-gray-50 border-t">
-            <button
-              onClick={addRow}
-              className="bg-white border border-gray-300 text-gray-700 px-4 py-2 rounded-md text-sm font-medium hover:bg-gray-50 transition"
-            >
-              + Добавить строку
-            </button>
-          </div>
+      {workTypes.length === 0 && (
+        <div className="bg-white border rounded-lg p-12 text-center text-gray-400">
+          Добавьте первый вид работы, чтобы начать заполнять смету
         </div>
       )}
 
-      {workTypes.length === 0 && (
-        <div className="bg-white shadow rounded-lg p-12 text-center">
-          <p className="text-gray-500 text-lg">Смета пуста</p>
-          <p className="text-gray-400 text-sm mt-1">Добавьте первый вид работы, чтобы начать</p>
+      {workTypes.length > 0 && (
+        <div className="bg-white border rounded-lg overflow-auto shadow-sm">
+          <table className="w-full text-sm border-collapse">
+            <thead>
+              {/* Row 1: Work type names */}
+              <tr className="bg-gray-100">
+                <th className="border border-gray-300 px-3 py-2 text-left font-semibold text-gray-700 w-64 sticky left-0 bg-gray-100 z-10">Задача</th>
+                {workTypes.map((wt, idx) => (
+                  <th key={wt.id} colSpan={3} className="border border-gray-300 px-2 py-2 text-center min-w-[240px]">
+                    <div className="flex items-center justify-center gap-2">
+                      {idx > 0 && (
+                        <button onClick={() => moveWorkType(idx, -1)} className="text-gray-400 hover:text-gray-600 text-xs">←</button>
+                      )}
+                      <span className="font-bold text-gray-800">{wt.name}</span>
+                      {idx < workTypes.length - 1 && (
+                        <button onClick={() => moveWorkType(idx, 1)} className="text-gray-400 hover:text-gray-600 text-xs">→</button>
+                      )}
+                      <button onClick={() => removeWorkType(wt.id)} className="text-red-400 hover:text-red-600 text-xs ml-1">✕</button>
+                    </div>
+                  </th>
+                ))}
+                <th className="border border-gray-300 w-10" />
+              </tr>
+              {/* Row 2: Specialist & global risk */}
+              <tr className="bg-gray-50">
+                <td className="border border-gray-300 px-3 py-1.5 text-xs text-gray-500 sticky left-0 bg-gray-50 z-10">Специалист / Риск</td>
+                {workTypes.map((wt) => (
+                  <td key={wt.id} colSpan={3} className="border border-gray-300 px-2 py-1.5">
+                    <div className="flex items-center justify-center gap-2">
+                      <select
+                        value={wt.specialistId}
+                        onChange={(e) => updateWorkType(wt.id, { specialistId: e.target.value })}
+                        className="text-xs border border-gray-300 rounded px-2 py-0.5 bg-white"
+                      >
+                        <option value="">—</option>
+                        {rates.map((r) => (
+                          <option key={r.id} value={r.id}>{r.role}</option>
+                        ))}
+                      </select>
+                      <span className="text-xs text-gray-400">|</span>
+                      <div className="flex items-center gap-1">
+                        <span className="text-xs text-gray-500">Риск:</span>
+                        <input
+                          type="number"
+                          step="0.1"
+                          value={wt.globalRisk}
+                          onChange={(e) => updateWorkType(wt.id, { globalRisk: Number(e.target.value) || 1 })}
+                          className="w-12 text-xs border border-gray-300 rounded px-1 py-0.5 text-center"
+                        />
+                      </div>
+                    </div>
+                  </td>
+                ))}
+                <td className="border border-gray-300" />
+              </tr>
+              {/* Row 3: Sub-headers */}
+              <tr className="bg-gray-50">
+                <td className="border border-gray-300 px-3 py-1.5 text-xs text-gray-500 font-medium sticky left-0 bg-gray-50 z-10">Название</td>
+                {workTypes.map((wt) => (
+                  <>
+                    <td key={`${wt.id}_c`} className="border border-gray-300 px-2 py-1.5 text-xs text-gray-500 text-center font-medium">Чистая</td>
+                    <td key={`${wt.id}_r`} className="border border-gray-300 px-2 py-1.5 text-xs text-gray-500 text-center font-medium">Риск</td>
+                    <td key={`${wt.id}_t`} className="border border-gray-300 px-2 py-1.5 text-xs text-gray-500 text-center font-medium">Итого</td>
+                  </>
+                ))}
+                <td className="border border-gray-300" />
+              </tr>
+            </thead>
+            <tbody>
+              {rows.map((row) => (
+                <tr key={row.id} className="hover:bg-blue-50/30">
+                  <td className="border border-gray-300 px-2 py-1.5 sticky left-0 bg-white z-10">
+                    <input
+                      type="text"
+                      value={row.name}
+                      onChange={(e) => updateRowName(row.id, e.target.value)}
+                      className="w-full px-2 py-1 text-sm border border-transparent hover:border-gray-300 focus:border-blue-500 rounded outline-none bg-transparent"
+                      placeholder="Название задачи"
+                    />
+                  </td>
+                  {workTypes.map((wt) => {
+                    const est = row.estimates?.[wt.id] || { clean: 0, risk: 1 };
+                    const total = calcTotal(est.clean, est.risk, wt.globalRisk);
+                    return (
+                      <>
+                        <td key={`${wt.id}_c`} className="border border-gray-300 px-1 py-1">
+                          <input
+                            type="number"
+                            value={est.clean || ''}
+                            onChange={(e) => updateEstimate(row.id, wt.id, 'clean', e.target.value)}
+                            className="w-full px-2 py-1 text-sm text-center border border-transparent hover:border-gray-300 focus:border-blue-500 rounded outline-none bg-transparent"
+                          />
+                        </td>
+                        <td key={`${wt.id}_r`} className="border border-gray-300 px-1 py-1">
+                          <input
+                            type="number"
+                            step="0.1"
+                            value={est.risk || ''}
+                            onChange={(e) => updateEstimate(row.id, wt.id, 'risk', e.target.value)}
+                            className="w-full px-2 py-1 text-sm text-center border border-transparent hover:border-gray-300 focus:border-blue-500 rounded outline-none bg-transparent"
+                          />
+                        </td>
+                        <td key={`${wt.id}_t`} className="border border-gray-300 px-2 py-1 text-center font-medium bg-gray-50/50 text-gray-800">
+                          {total}
+                        </td>
+                      </>
+                    );
+                  })}
+                  <td className="border border-gray-300 px-2 py-1 text-center">
+                    <button onClick={() => removeRow(row.id)} className="text-red-400 hover:text-red-600 text-sm">✕</button>
+                  </td>
+                </tr>
+              ))}
+              {rows.length === 0 && (
+                <tr>
+                  <td colSpan={workTypes.length * 3 + 2} className="border border-gray-300 px-6 py-8 text-center text-gray-400 text-sm">
+                    Нет строк. Нажмите «+ Строка» выше.
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
         </div>
       )}
     </div>
