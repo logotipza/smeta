@@ -692,7 +692,8 @@ export default function SmetaPage() {
                       setDraggingRowId(null);
                       setDragOverRowId(null);
                     }}
-                    className={`hover:bg-blue-50/30 transition-all duration-200
+                    className={`transition-all duration-200
+                      ${isParent ? 'bg-gray-50/50' : 'hover:bg-blue-50/30'}
                       ${draggingRowId === row.id ? 'opacity-40 scale-[0.99]' : ''}
                       ${dragOverRowId === row.id && draggingRowId !== row.id ? 'bg-blue-50 ring-2 ring-blue-200' : ''}
                     `}
@@ -736,8 +737,8 @@ export default function SmetaPage() {
                           <span className="w-3" />
                         )}
                         <div
-                          className="flex-1 border-l border-gray-200"
-                          style={{ paddingLeft: level * 16 + 6, marginLeft: level * 4 }}
+                          className={`flex-1 border-l-2 ${level === 1 ? 'border-blue-200' : level === 2 ? 'border-green-200' : level >= 3 ? 'border-purple-200' : 'border-transparent'}`}
+                          style={{ paddingLeft: level * 24 + 8, marginLeft: level * 6 }}
                         >
                           <AutoResizeTextarea
                             value={row.name}
@@ -824,7 +825,7 @@ export default function SmetaPage() {
                           <>
                             <td className="border border-gray-300 px-1 py-1 text-center text-gray-400">—</td>
                             <td className="border border-gray-300 px-1 py-1 text-center text-gray-400">—</td>
-                            <td className="border border-gray-300 px-1 py-1 text-center">{(total * rate).toLocaleString('ru-RU')} ₽</td>
+                            <td className="border border-gray-300 px-1 py-1 text-center">{(total * rate).toLocaleString('ru-RU')}</td>
                           </>
                         );
                       })}
@@ -833,7 +834,7 @@ export default function SmetaPage() {
                           const total = leafVisibleRows.reduce((s, r) => s + calcCellTotal(r, wt), 0);
                           const rate = rates.find((r) => r.id === wt.specialistId)?.rate || 0;
                           return sum + total * rate;
-                        }, 0).toLocaleString('ru-RU')} ₽
+                        }, 0).toLocaleString('ru-RU')}
                       </td>
                       <td className="border border-gray-300" />
                     </tr>
