@@ -706,8 +706,58 @@ export default function SmetaPage() {
                   </tr>
                 );
               })}
+
+              {/* Totals row */}
+              {(() => {
+                const leafVisibleRows = getVisibleRows(rows).filter((r) => !hasChildren(rows, r.id));
+                return (
+                  <>
+                    <tr className="bg-gray-100 font-bold text-xs">
+                      <td className="border border-gray-300 px-2 py-1 sticky left-0 bg-gray-100 z-10 drop-shadow-[2px_0_4px_rgba(0,0,0,0.15)] ">ИТОГО</td>
+                      {workTypes.map((wt) => {
+                        const totalClean = leafVisibleRows.reduce((sum, r) => sum + calcCellClean(r, wt), 0);
+                        const totalTotal = leafVisibleRows.reduce((sum, r) => sum + calcCellTotal(r, wt), 0);
+                        return (
+                          <>
+                            <td className="border border-gray-300 px-1 py-1 text-center">{totalClean || ''}</td>
+                            <td className="border border-gray-300 px-1 py-1 text-center text-gray-400">—</td>
+                            <td className="border border-gray-300 px-1 py-1 text-center">{totalTotal}</td>
+                          </>
+                        );
+                      })}
+                      <td className="border border-gray-300 px-1 py-1 text-center">
+                        {workTypes.reduce((sum, wt) => sum + leafVisibleRows.reduce((s, r) => s + calcCellTotal(r, wt), 0), 0)}
+                      </td>
+                      <td className="border border-gray-300" />
+                    </tr>
+                    <tr className="bg-gray-50 font-bold text-xs">
+                      <td className="border border-gray-300 px-2 py-1 sticky left-0 bg-gray-50 z-10 drop-shadow-[2px_0_4px_rgba(0,0,0,0.15)] ">Стоимость</td>
+                      {workTypes.map((wt) => {
+                        const total = leafVisibleRows.reduce((sum, r) => sum + calcCellTotal(r, wt), 0);
+                        const rate = rates.find((r) => r.id === wt.specialistId)?.rate || 0;
+                        return (
+                          <>
+                            <td className="border border-gray-300 px-1 py-1 text-center text-gray-400">—</td>
+                            <td className="border border-gray-300 px-1 py-1 text-center text-gray-400">—</td>
+                            <td className="border border-gray-300 px-1 py-1 text-center">{(total * rate).toLocaleString('ru-RU')} ₽</td>
+                          </>
+                        );
+                      })}
+                      <td className="border border-gray-300 px-1 py-1 text-center">
+                        {workTypes.reduce((sum, wt) => {
+                          const total = leafVisibleRows.reduce((s, r) => s + calcCellTotal(r, wt), 0);
+                          const rate = rates.find((r) => r.id === wt.specialistId)?.rate || 0;
+                          return sum + total * rate;
+                        }, 0).toLocaleString('ru-RU')} ₽
+                      </td>
+                      <td className="border border-gray-300" />
+                    </tr>
+                  </>
+                );
+              })()}
+
               <tr>
-                <td className="border border-gray-300 px-2 py-2 sticky left-0 bg-white z-10">
+                <td className="border border-gray-300 px-2 py-2 sticky left-0 bg-white z-10 drop-shadow-[2px_0_4px_rgba(0,0,0,0.15)] ">
                   <button
                     onClick={addRow}
                     className="bg-blue-600 text-white w-7 h-7 rounded flex items-center justify-center text-sm font-bold hover:bg-blue-700 transition shadow-sm"
