@@ -336,16 +336,24 @@ export default function SmetaPage() {
       };
     });
 
-    // Totals row (hours)
+    // Build list of visible row indices that are leaf rows (no children)
+    const leafVisibleIndices = visibleRows
+      .map((r, idx) => ({ r, idx }))
+      .filter(({ r }) => !hasChildren(rows, r.id))
+      .map(({ idx }) => idx);
+
+    // Totals row (hours) — sum only leaf rows to avoid double-counting
     const tHours = ['ИТОГО'];
     workTypes.forEach((_, wtIdx) => {
       const totalCol = totalCols[wtIdx];
+      const leafRefs = leafVisibleIndices.map((idx) => `${totalCol}${firstDataRow + idx}`);
       tHours.push('', '',
-        { t: 'n', f: `=SUM(${totalCol}${firstDataRow}:${totalCol}${totalsRow - 1})`, v: 0 }
+        { t: 'n', f: '=' + leafRefs.join('+'), v: 0 }
       );
     });
+    const rowTotalLeafRefs = leafVisibleIndices.map((idx) => `${rowTotalCol}${firstDataRow + idx}`);
     tHours.push(
-      { t: 'n', f: `=SUM(${rowTotalCol}${firstDataRow}:${rowTotalCol}${totalsRow - 1})`, v: 0 }
+      { t: 'n', f: '=' + rowTotalLeafRefs.join('+'), v: 0 }
     );
     XLSX.utils.sheet_add_aoa(ws, [tHours], { origin: { r: totalsRow - 1, c: 0 } });
 
