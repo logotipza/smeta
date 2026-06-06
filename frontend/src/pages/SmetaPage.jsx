@@ -305,20 +305,28 @@ export default function SmetaPage() {
     const rowTotalCol = colAddr(1 + workTypes.length * COLS_PER_WT);
 
     // Add formulas for data rows
-    visibleRows.forEach((_, rowIdx) => {
+    visibleRows.forEach((row, rowIdx) => {
       const excelRow = firstDataRow + rowIdx;
-      workTypes.forEach((_, wtIdx) => {
+      const isParent = hasChildren(rows, row.id);
+
+      workTypes.forEach((wt, wtIdx) => {
         const colStart = 1 + wtIdx * COLS_PER_WT;
         const cleanCol = colAddr(colStart);
         const riskCol = colAddr(colStart + 1);
         const totalCol = totalCols[wtIdx];
         const globalRiskCol = colAddr(colStart);
 
-        ws[`${totalCol}${excelRow}`] = {
-          t: 'n',
-          f: `=ROUNDUP(${cleanCol}${excelRow}*${riskCol}${excelRow}*${globalRiskCol}$${globalRiskRow},0)`,
-          v: 0,
-        };
+        if (isParent) {
+          // Parent row: total is sum of children totals (static value)
+          const totalVal = calcCellTotal(row, wt);
+          ws[`${totalCol}${excelRow}`] = { t: 'n', v: totalVal };
+        } else {
+          ws[`${totalCol}${excelRow}`] = {
+            t: 'n',
+            f: `=ROUNDUP(${cleanCol}${excelRow}*${riskCol}${excelRow}*${globalRiskCol}$${globalRiskRow},0)`,
+            v: 0,
+          };
+        }
       });
 
       ws[`${rowTotalCol}${excelRow}`] = {
