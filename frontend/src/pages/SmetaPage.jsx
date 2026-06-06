@@ -475,7 +475,18 @@ export default function SmetaPage() {
       {workTypes.length > 0 && (
         <div className="flex items-center gap-6 bg-white border rounded-lg px-4 py-3 shadow-sm">
           <div className="flex flex-col">
-            <span className="text-[10px] text-gray-500 uppercase tracking-wider">Всего часов</span>
+            <span className="text-[10px] text-gray-500 uppercase tracking-wider">Всего чистых часов</span>
+            <span className="text-xl font-bold text-gray-700">
+              {rows.filter((r) => !hasChildren(rows, r.id)).reduce((sum, row) => {
+                return sum + workTypes.reduce((wtSum, wt) => {
+                  return wtSum + (row.estimates?.[wt.id]?.clean || 0);
+                }, 0);
+              }, 0)}
+            </span>
+          </div>
+          <div className="w-px h-8 bg-gray-200" />
+          <div className="flex flex-col">
+            <span className="text-[10px] text-gray-500 uppercase tracking-wider">Всего часов (с риском)</span>
             <span className="text-xl font-bold text-gray-800">
               {rows.filter((r) => !hasChildren(rows, r.id)).reduce((sum, row) => {
                 return sum + workTypes.reduce((wtSum, wt) => {
