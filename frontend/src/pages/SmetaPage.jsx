@@ -386,20 +386,30 @@ export default function SmetaPage() {
         const isHeader = R < 5;
         const isTotalRow = R === totalsRow - 1;
         const isCostRow = R === costRow - 1;
+        const isSpecial = isHeader || isTotalRow || isCostRow;
+        const borderStyle = isSpecial ? 'medium' : 'thin';
 
         ws[cellRef].s = {
           border: {
-            top: { style: 'thin', color: { rgb: '000000' } },
-            bottom: { style: 'thin', color: { rgb: '000000' } },
-            left: { style: 'thin', color: { rgb: '000000' } },
-            right: { style: 'thin', color: { rgb: '000000' } },
+            top: { style: borderStyle, color: { rgb: '000000' } },
+            bottom: { style: borderStyle, color: { rgb: '000000' } },
+            left: { style: borderStyle, color: { rgb: '000000' } },
+            right: { style: borderStyle, color: { rgb: '000000' } },
           },
           alignment: { vertical: 'center', wrapText: true },
-          font: (isHeader || isTotalRow || isCostRow) ? { bold: true } : {},
-          fill: isHeader ? { fgColor: { rgb: 'F3F4F6' }, patternType: 'solid' } : {},
+          font: isSpecial ? { bold: true } : {},
+          fill: isHeader ? { fgColor: { rgb: 'D1D5DB' }, patternType: 'solid' } : {},
         };
       }
     }
+
+    // Freeze panes: lock first column + first 5 header rows
+    ws['!freeze'] = {
+      xSplit: 1,
+      ySplit: 5,
+      topLeftCell: 'B6',
+      activePane: 'bottomRight',
+    };
 
     XLSX.utils.book_append_sheet(wb, ws, 'Смета');
     XLSX.writeFile(wb, 'smeta.xlsx');
