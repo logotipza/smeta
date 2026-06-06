@@ -87,6 +87,8 @@ export default function SmetaPage() {
   const [workTypeError, setWorkTypeError] = useState(false);
   const [draggingIdx, setDraggingIdx] = useState(null);
   const [dragOverIdx, setDragOverIdx] = useState(null);
+  const [draggingRowId, setDraggingRowId] = useState(null);
+  const [dragOverRowId, setDragOverRowId] = useState(null);
 
 
   useEffect(() => {
@@ -133,6 +135,17 @@ export default function SmetaPage() {
   };
 
   const addChildRow = (parentId) => {
+    const parent = rows.find((r) => r.id === parentId);
+    if (!parent) return;
+    const hasOwnHours = Object.values(parent.estimates || {}).some(
+      (est) => (est.clean || 0) > 0 || (est.risk !== undefined && est.risk !== 1)
+    );
+    if (hasOwnHours) {
+      const confirmed = window.confirm(
+        'У этой задачи уже указаны часы. При добавлении подзадач она станет обобщающей и собственные часы не будут учитываться. Продолжить?'
+      );
+      if (!confirmed) return;
+    }
     const subtreeIds = getSubtreeIds(rows, parentId);
     const lastDescendantId = subtreeIds[subtreeIds.length - 1];
     const insertIdx = rows.findIndex((r) => r.id === lastDescendantId) + 1;
@@ -634,10 +647,72 @@ export default function SmetaPage() {
                 const level = getLevel(rows, row);
                 const isParent = hasChildren(rows, row.id);
                 return (
-                  <tr key={row.id} className="hover:bg-blue-50/30">
+                  <tr
+                    key={row.id}
+                    onDragOver={(e) => {
+                      e.preventDefault();
+                      e.dataTransfer.dropEffect = 'move';
+                      setDragOverRowId(row.id);
+                    }}
+                    onDragLeave={() => setDragOverRowId(null)}
+                    onDrop={(e) => {
+                      e.preventDefault();
+                      const draggedId = e.dataTransfer.getData('text/plain');
+                      if (!draggedId || draggedId === row.id) {
+                        setDraggingRowId(null);
+                        setDragOverRowId(null);
+                        return;
+                      }
+                      if (getSubtreeIds(rows, draggedId).includes(row.id)) {
+                        setDraggingRowId(null);
+                        setDragOverRowId(null);
+                        return;
+                      }
+                      const draggedRow = rows.find((r) => r.id === draggedId);
+                      const makeChild = window.confirm(
+                        `Сделать "${draggedRow?.name || 'задачу'}" подзадачей к "${row.name || 'задаче'}"?\n\nOK = вложить\nОтмена = просто переместить после`
+                      );
+                      const subtreeIds = getSubtreeIds(rows, draggedId);
+                      const subtree = rows.filter((r) => subtreeIds.includes(r.id));
+                      const remaining = rows.filter((r) => !subtreeIds.includes(r.id));
+                      const insertIdx = remaining.findIndex((r) => r.id === row.id) + 1;
+                      const newRows = [
+                        ...remaining.slice(0, insertIdx),
+                        ...subtree,
+                        ...remaining.slice(insertIdx),
+                      ];
+                      if (makeChild) {
+                        const updatedRows = newRows.map((r) =>
+                          r.id === draggedId ? { ...r, parentId: row.id } : r
+                        );
+                        setRows(updatedRows);
+                      } else {
+                        setRows(newRows);
+                      }
+                      setDraggingRowId(null);
+                      setDragOverRowId(null);
+                    }}
+                    className={`hover:bg-blue-50/30 transition-all duration-200
+                      ${draggingRowId === row.id ? 'opacity-40 scale-[0.99]' : ''}
+                      ${dragOverRowId === row.id && draggingRowId !== row.id ? 'bg-blue-50 ring-2 ring-blue-200' : ''}
+                    `}
+                  >
                     <td className="border border-gray-300 px-2 py-1 sticky left-0 bg-white z-10 align-top drop-shadow-[2px_0_4px_rgba(0,0,0,0.15)] ">
                       <div className="flex items-start gap-1">
-                        <span className="text-gray-300 select-none text-xs leading-none mt-1">&#x2630;</span>
+                        <span
+                          draggable
+                          onDragStart={(e) => {
+                            e.dataTransfer.setData('text/plain', row.id);
+                            e.dataTransfer.effectAllowed = 'move';
+                            setDraggingRowId(row.id);
+                          }}
+                          onDragEnd={() => {
+                            setDraggingRowId(null);
+                            setDragOverRowId(null);
+                          }}
+                          className="cursor-grab text-gray-400 hover:text-gray-600 select-none text-xs leading-none mt-1"
+                          title="Перетащить"
+                        >&#x2630;</span>
                         {isParent ? (
                           <button
                             onClick={() => toggleExpand(row.id)}
