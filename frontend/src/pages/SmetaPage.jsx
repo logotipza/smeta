@@ -620,9 +620,14 @@ export default function SmetaPage() {
                   <td key={wt.id} colSpan={3} className="border border-gray-300 px-1 py-1 text-center">
                     <input
                       type="number"
+                      min="0"
                       step="0.1"
                       value={wt.globalRisk}
-                      onChange={(e) => updateWorkType(wt.id, { globalRisk: Number(e.target.value) || 1 })}
+                      onChange={(e) => {
+                        const val = Number(e.target.value);
+                        if (val < 0) return;
+                        updateWorkType(wt.id, { globalRisk: val || 1 });
+                      }}
                       className="w-14 text-[10px] border border-gray-300 rounded px-1 py-0.5 text-center"
                     />
                   </td>
@@ -761,8 +766,13 @@ export default function SmetaPage() {
                             ) : (
                               <input
                                 type="number"
+                                min="0"
                                 value={est.clean || ''}
-                                onChange={(e) => updateEstimate(row.id, wt.id, 'clean', e.target.value)}
+                                onChange={(e) => {
+                                  const val = Number(e.target.value);
+                                  if (val < 0) return;
+                                  updateEstimate(row.id, wt.id, 'clean', e.target.value);
+                                }}
                                 className="w-full px-1 py-0.5 text-xs text-center border border-transparent hover:border-gray-300 focus:border-blue-500 rounded outline-none bg-transparent h-5"
                               />
                             )}
@@ -773,9 +783,14 @@ export default function SmetaPage() {
                             ) : (
                               <input
                                 type="number"
+                                min="0"
                                 step="0.1"
                                 value={est.risk || ''}
-                                onChange={(e) => updateEstimate(row.id, wt.id, 'risk', e.target.value)}
+                                onChange={(e) => {
+                                  const val = Number(e.target.value);
+                                  if (val < 0) return;
+                                  updateEstimate(row.id, wt.id, 'risk', e.target.value);
+                                }}
                                 className="w-full px-1 py-0.5 text-xs text-center border border-transparent hover:border-gray-300 focus:border-blue-500 rounded outline-none bg-transparent h-5"
                               />
                             )}
