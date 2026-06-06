@@ -577,7 +577,7 @@ export default function SmetaPage() {
                         &#x2630;
                       </span>
                       {idx > 0 && (
-                        <button onClick={() => moveWorkType(idx, -1)} className="text-gray-400 hover:text-gray-600 text-[10px]">←</button>
+                        <button onClick={() => moveWorkType(idx, -1)} className="text-gray-400 hover:text-gray-600 text-[10px]">‹</button>
                       )}
                       <input
                         type="text"
@@ -586,7 +586,7 @@ export default function SmetaPage() {
                         className="font-bold text-gray-800 text-xs bg-transparent border border-transparent hover:border-gray-300 focus:border-blue-500 rounded px-1 py-0.5 text-center outline-none w-24"
                       />
                       {idx < workTypes.length - 1 && (
-                        <button onClick={() => moveWorkType(idx, 1)} className="text-gray-400 hover:text-gray-600 text-[10px]">→</button>
+                        <button onClick={() => moveWorkType(idx, 1)} className="text-gray-400 hover:text-gray-600 text-[10px]">›</button>
                       )}
                       <button onClick={() => removeWorkType(wt.id)} className="text-red-400 hover:text-red-600 text-[10px] ml-0.5">✕</button>
                     </div>
@@ -719,13 +719,13 @@ export default function SmetaPage() {
                           className="text-[10px] text-gray-400 hover:text-gray-600 mt-0.5 disabled:opacity-0"
                           disabled={level === 0}
                           title="Поднять"
-                        >←</button>
+                        >‹</button>
                         <button
                           onClick={() => indentRow(row.id)}
                           className="text-[10px] text-gray-400 hover:text-gray-600 mt-0.5 disabled:opacity-0"
                           disabled={getVisibleRows(rows).findIndex((r) => r.id === row.id) === 0}
                           title="Вложить"
-                        >→</button>
+                        >›</button>
                         {isParent ? (
                           <button
                             onClick={() => toggleExpand(row.id)}
