@@ -713,6 +713,18 @@ export default function SmetaPage() {
                           className="cursor-grab text-gray-400 hover:text-gray-600 select-none text-xs leading-none mt-1"
                           title="Перетащить"
                         >&#x2630;</span>
+                        <button
+                          onClick={() => outdentRow(row.id)}
+                          className="text-[10px] text-gray-400 hover:text-gray-600 mt-0.5 disabled:opacity-0"
+                          disabled={level === 0}
+                          title="Поднять"
+                        >←</button>
+                        <button
+                          onClick={() => indentRow(row.id)}
+                          className="text-[10px] text-gray-400 hover:text-gray-600 mt-0.5 disabled:opacity-0"
+                          disabled={getVisibleRows(rows).findIndex((r) => r.id === row.id) === 0}
+                          title="Вложить"
+                        >→</button>
                         {isParent ? (
                           <button
                             onClick={() => toggleExpand(row.id)}
@@ -723,7 +735,10 @@ export default function SmetaPage() {
                         ) : (
                           <span className="w-3" />
                         )}
-                        <div className="flex-1" style={{ paddingLeft: level * 12 }}>
+                        <div
+                          className="flex-1 border-l border-gray-200"
+                          style={{ paddingLeft: level * 16 + 6, marginLeft: level * 4 }}
+                        >
                           <AutoResizeTextarea
                             value={row.name}
                             onChange={(e) => updateRowName(row.id, e.target.value)}
@@ -731,11 +746,6 @@ export default function SmetaPage() {
                             placeholder="Название"
                           />
                         </div>
-                      </div>
-                      <div className="flex items-center gap-2 mt-1 pl-7">
-                        <button onClick={() => indentRow(row.id)} className="text-[10px] text-gray-400 hover:text-gray-600" title="Вложить">→</button>
-                        <button onClick={() => outdentRow(row.id)} className="text-[10px] text-gray-400 hover:text-gray-600" title="Поднять">←</button>
-                        <button onClick={() => addChildRow(row.id)} className="text-[10px] text-blue-400 hover:text-blue-600" title="Добавить подзадачу">+подзадача</button>
                       </div>
                     </td>
                     {workTypes.map((wt) => {
