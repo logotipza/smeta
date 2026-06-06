@@ -577,7 +577,7 @@ export default function SmetaPage() {
                         &#x2630;
                       </span>
                       {idx > 0 && (
-                        <button onClick={() => moveWorkType(idx, -1)} className="text-gray-400 hover:text-gray-600 text-[10px]">‹</button>
+                        <button onClick={() => moveWorkType(idx, -1)} className="w-5 h-5 flex items-center justify-center text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded text-xs">‹</button>
                       )}
                       <input
                         type="text"
@@ -586,7 +586,7 @@ export default function SmetaPage() {
                         className="font-bold text-gray-800 text-xs bg-transparent border border-transparent hover:border-gray-300 focus:border-blue-500 rounded px-1 py-0.5 text-center outline-none w-24"
                       />
                       {idx < workTypes.length - 1 && (
-                        <button onClick={() => moveWorkType(idx, 1)} className="text-gray-400 hover:text-gray-600 text-[10px]">›</button>
+                        <button onClick={() => moveWorkType(idx, 1)} className="w-5 h-5 flex items-center justify-center text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded text-xs">›</button>
                       )}
                       <button onClick={() => removeWorkType(wt.id)} className="text-red-400 hover:text-red-600 text-[10px] ml-0.5">✕</button>
                     </div>
@@ -699,7 +699,7 @@ export default function SmetaPage() {
                     `}
                   >
                     <td className="border border-gray-300 px-2 py-1 sticky left-0 bg-white z-10 align-top drop-shadow-[2px_0_4px_rgba(0,0,0,0.15)] ">
-                      <div className="flex items-start gap-1">
+                      <div className="flex items-center gap-1 min-h-[24px]">
                         <span
                           draggable
                           onDragStart={(e) => {
@@ -711,30 +711,30 @@ export default function SmetaPage() {
                             setDraggingRowId(null);
                             setDragOverRowId(null);
                           }}
-                          className="cursor-grab text-gray-400 hover:text-gray-600 select-none text-xs leading-none mt-1"
+                          className="cursor-grab text-gray-400 hover:text-gray-600 select-none text-sm leading-none flex items-center justify-center w-6 h-6 rounded hover:bg-gray-100"
                           title="Перетащить"
                         >&#x2630;</span>
                         <button
                           onClick={() => outdentRow(row.id)}
-                          className="text-[10px] text-gray-400 hover:text-gray-600 mt-0.5 disabled:opacity-0"
+                          className="w-6 h-6 flex items-center justify-center text-sm text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded disabled:opacity-0"
                           disabled={level === 0}
                           title="Поднять"
                         >‹</button>
                         <button
                           onClick={() => indentRow(row.id)}
-                          className="text-[10px] text-gray-400 hover:text-gray-600 mt-0.5 disabled:opacity-0"
+                          className="w-6 h-6 flex items-center justify-center text-sm text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded disabled:opacity-0"
                           disabled={getVisibleRows(rows).findIndex((r) => r.id === row.id) === 0}
                           title="Вложить"
                         >›</button>
                         {isParent ? (
                           <button
                             onClick={() => toggleExpand(row.id)}
-                            className="text-gray-500 hover:text-gray-700 text-xs mt-0.5 w-3 text-left"
+                            className="w-6 h-6 flex items-center justify-center text-xs text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded"
                           >
                             {row.isExpanded ? '▼' : '▶'}
                           </button>
                         ) : (
-                          <span className="w-3" />
+                          <span className="w-6" />
                         )}
                         <div
                           className={`flex-1 border-l-2 ${level === 1 ? 'border-blue-200' : level === 2 ? 'border-green-200' : level >= 3 ? 'border-purple-200' : 'border-transparent'}`}
